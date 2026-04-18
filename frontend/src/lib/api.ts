@@ -1,0 +1,228 @@
+const API_URL = import.meta.env.VITE_API_URL || ''
+
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  token?: string,
+): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> | undefined),
+  }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const res = await fetch(`${API_URL}${path}`, { ...options, headers })
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: res.statusText }))
+    throw new ApiError(res.status, body.error || 'Request failed', body)
+  }
+
+  const contentType = res.headers.get('content-type') ?? ''
+  if (contentType.includes('application/json')) return res.json() as Promise<T>
+  return res.text() as unknown as T
+}
+
+export class ApiError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+    public body?: unknown,
+  ) {
+    super(message)
+  }
+}
+
+// ── Public API ─────────────────────────────────────────────────────────────────
+
+export interface Petition {
+  id: string
+  slug: string
+  title: string
+  summary: string
+  body: string
+  recipientName: string
+  recipientDescription?: string
+  status: string
+  goalCount?: number
+  allowPublicNames: boolean
+  allowComments: boolean
+  requireVerification: boolean
+  startsAt?: string
+  endsAt?: string
+  createdAt: string
+  signatureCount: number
+  signatures?: PublicSignature[]
+}
+
+export interface PublicSignature {
+  fullName: string
+  city?: string
+  country?: string
+  comment?: string
+  createdAt: string
+}
+
+export interface SignPayload {
+  fullName: string
+  email: string
+  city?: string
+  country?: string
+  comment?: string
+  publicOptIn: boolean
+  updatesOptIn: boolean
+  recipientShareOptIn: boolean
+}
+
+export const api = {
+  getPetitions: (params?: { search?: string; page?: number; limit?: number }) => {
+    const q = new URLSearchParams()
+    if (params?.search) q.set('search', params.search)
+    if (params?.page) q.set('page', String(params.page))
+    if (params?.limit) q.set('limit', String(params.limit))
+    return request<{ petitions: Petition[]; total: number; page: number; totalPages: number }>(
+      `/api/petitions?${q}`,
+    )
+  },
+
+  getPetition: (slug: string) => request<Petition>(`/api/petitions/${slug}`),
+
+  signPetition: (slug: string, payload: SignPayload) =>
+    request<{ message: string; signatureId: string }>(`/api/petitions/${slug}/sign`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  requestWithdrawal: (slug: string, email: string) =>
+    request<{ message: string }>(`/api/petitions/${slug}/withdraw-request`, {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
+
+  verifyToken: (token: string) =>
+    request<{ message: string; petitionSlug: string; petitionTitle: string }>(
+      `/api/verify/${token}`,
+    ),
+
+  withdrawToken: (token: string) =>
+    request<{ message: string; petitionSlug: string; petitionTitle: string }>(
+      `/api/withdraw/${token}`,
+      { method: 'POST' },
+    ),
+}
+
+// ── Admin API ─────────────────────────────────────────────────────────────────
+
+export interface AdminPetition extends Petition {
+  creator?: { email: string }
+  _count?: { signatures: number }
+}
+
+export interface Signature {
+  id: string
+  petitionId: string
+  fullName: string
+  email: string
+  city?: string
+  country?: string
+  comment?: string
+  verified: boolean
+  withdrawn: boolean
+  publicOptIn: boolean
+  updatesOptIn: boolean
+  recipientShareOptIn: boolean
+  createdAt: string
+  verifiedAt?: string
+  withdrawnAt?: string
+}
+
+export interface DashboardStats {
+  totalPetitions: number
+  activePetitions: number
+  totalSignatures: number
+  verifiedSignatures: number
+}
+
+export const adminApi = {
+  login: (email: string, password: string) =>
+    request<{ token: string; user: { id: string; email: string; role: string } }>(
+      '/api/admin/login',
+      { method: 'POST', body: JSON.stringify({ email, password }) },
+    ),
+
+  getDashboard: (token: string) =>
+    request<{ stats: DashboardStats; recentSignatures: Signature[]; recentPetitions: AdminPetition[] }>(
+      '/api/admin/dashboard',
+      {},
+      token,
+    ),
+
+  getPetitions: (token: string, params?: { page?: number; status?: string }) => {
+    const q = new URLSearchParams()
+    if (params?.page) q.set('page', String(params.page))
+    if (params?.status) q.set('status', params.status)
+    return request<{ petitions: AdminPetition[]; total: number; totalPages: number }>(
+      `/api/admin/petitions?${q}`,
+      {},
+      token,
+    )
+  },
+
+  getPetition: (token: string, id: string) =>
+    request<AdminPetition>(`/api/admin/petitions/${id}`, {}, token),
+
+  createPetition: (token: string, data: Partial<AdminPetition>) =>
+    request<AdminPetition>('/api/admin/petitions', { method: 'POST', body: JSON.stringify(data) }, token),
+
+  updatePetition: (token: string, id: string, data: Partial<AdminPetition>) =>
+    request<AdminPetition>(`/api/admin/petitions/${id}`, { method: 'PUT', body: JSON.stringify(data) }, token),
+
+  archivePetition: (token: string, id: string) =>
+    request<{ message: string }>(`/api/admin/petitions/${id}`, { method: 'DELETE' }, token),
+
+  getSignatures: (
+    token: string,
+    petitionId: string,
+    params?: { page?: number; verified?: boolean; withdrawn?: boolean },
+  ) => {
+    const q = new URLSearchParams()
+    if (params?.page) q.set('page', String(params.page))
+    if (params?.verified !== undefined) q.set('verified', String(params.verified))
+    if (params?.withdrawn !== undefined) q.set('withdrawn', String(params.withdrawn))
+    return request<{ signatures: Signature[]; total: number; totalPages: number }>(
+      `/api/admin/petitions/${petitionId}/signatures?${q}`,
+      {},
+      token,
+    )
+  },
+
+  removeSignature: (token: string, id: string) =>
+    request<{ message: string }>(`/api/admin/signatures/${id}`, { method: 'DELETE' }, token),
+
+  exportSignatures: async (
+    token: string,
+    format: 'csv' | 'json',
+    filters: { petitionId?: string; verified?: boolean; withdrawn?: boolean; country?: string },
+  ) => {
+    const res = await fetch(`${API_URL}/api/admin/export`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ format, ...filters }),
+    })
+    if (!res.ok) throw new ApiError(res.status, 'Export failed')
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `signatures.${format}`
+    a.click()
+    URL.revokeObjectURL(url)
+  },
+
+  getUsers: (token: string) =>
+    request<{ id: string; email: string; role: string; createdAt: string }[]>(
+      '/api/admin/users',
+      {},
+      token,
+    ),
+}
