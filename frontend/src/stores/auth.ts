@@ -9,6 +9,8 @@ export interface AuthUser {
   role: string
 }
 
+// NOTE: Tokens are stored in localStorage for simplicity. In a high-security
+// deployment, prefer httpOnly cookies set by the server to reduce XSS exposure.
 const stored = localStorage.getItem(TOKEN_KEY)
 const storedUser = localStorage.getItem(USER_KEY)
 
