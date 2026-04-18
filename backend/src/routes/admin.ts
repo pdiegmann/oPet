@@ -293,6 +293,174 @@ adminRoutes.get('/audit', async (c) => {
   return c.json({ logs, total, page, totalPages: Math.ceil(total / limit) })
 })
 
+// ── Backup & Restore ──────────────────────────────────────────────────────────
+
+adminRoutes.get('/backup', async (c) => {
+  const user = c.get('user')
+
+  const petitions = await prisma.petition.findMany({
+    include: { signatures: true },
+    orderBy: { createdAt: 'asc' },
+  })
+
+  const backup = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    petitions: petitions.map(({ signatures, ...petition }) => ({
+      ...petition,
+      signatures,
+    })),
+  }
+
+  await createAuditLog('backup.created', 'System', 'backup', user.userId)
+
+  const filename = `opet-backup-${new Date().toISOString().split('T')[0]}.json`
+  c.header('Content-Type', 'application/json')
+  c.header('Content-Disposition', `attachment; filename="${filename}"`)
+  return c.json(backup)
+})
+
+const backupSignatureSchema = z.object({
+  fullName: z.string(),
+  email: z.string(),
+  city: z.string().nullable().optional(),
+  country: z.string().nullable().optional(),
+  comment: z.string().nullable().optional(),
+  verified: z.boolean().default(false),
+  withdrawn: z.boolean().default(false),
+  publicOptIn: z.boolean().default(false),
+  updatesOptIn: z.boolean().default(false),
+  recipientShareOptIn: z.boolean().default(false),
+  createdAt: z.string().optional(),
+  verifiedAt: z.string().nullable().optional(),
+  withdrawnAt: z.string().nullable().optional(),
+})
+
+const backupPetitionSchema = z.object({
+  slug: z.string(),
+  title: z.string(),
+  summary: z.string(),
+  body: z.string(),
+  recipientName: z.string(),
+  recipientDescription: z.string().nullable().optional(),
+  status: z.string().default('draft'),
+  goalCount: z.number().nullable().optional(),
+  allowPublicNames: z.boolean().default(false),
+  allowComments: z.boolean().default(false),
+  requireVerification: z.boolean().default(true),
+  startsAt: z.string().nullable().optional(),
+  endsAt: z.string().nullable().optional(),
+  createdAt: z.string().optional(),
+  signatures: z.array(backupSignatureSchema).optional().default([]),
+})
+
+const restoreSchema = z.object({
+  version: z.literal(1),
+  exportedAt: z.string(),
+  petitions: z.array(backupPetitionSchema),
+})
+
+adminRoutes.post('/restore', async (c) => {
+  const user = c.get('user')
+  if (user.role !== 'admin') return c.json({ error: 'Forbidden' }, 403)
+
+  const body = await c.req.json().catch(() => null)
+  const parsed = restoreSchema.safeParse(body)
+  if (!parsed.success) {
+    return c.json({ error: 'Invalid backup format', details: parsed.error.flatten() }, 422)
+  }
+
+  let restoredPetitions = 0
+  let restoredSignatures = 0
+
+  await prisma.$transaction(async (tx) => {
+    for (const petitionData of parsed.data.petitions) {
+      const { signatures, createdAt, startsAt, endsAt, ...petitionFields } = petitionData
+
+      const petition = await tx.petition.upsert({
+        where: { slug: petitionFields.slug },
+        update: {
+          title: petitionFields.title,
+          summary: petitionFields.summary,
+          body: petitionFields.body,
+          recipientName: petitionFields.recipientName,
+          recipientDescription: petitionFields.recipientDescription ?? null,
+          status: petitionFields.status,
+          goalCount: petitionFields.goalCount ?? null,
+          allowPublicNames: petitionFields.allowPublicNames,
+          allowComments: petitionFields.allowComments,
+          requireVerification: petitionFields.requireVerification,
+          startsAt: startsAt ? new Date(startsAt) : null,
+          endsAt: endsAt ? new Date(endsAt) : null,
+        },
+        create: {
+          slug: petitionFields.slug,
+          title: petitionFields.title,
+          summary: petitionFields.summary,
+          body: petitionFields.body,
+          recipientName: petitionFields.recipientName,
+          recipientDescription: petitionFields.recipientDescription ?? null,
+          status: petitionFields.status,
+          goalCount: petitionFields.goalCount ?? null,
+          allowPublicNames: petitionFields.allowPublicNames,
+          allowComments: petitionFields.allowComments,
+          requireVerification: petitionFields.requireVerification,
+          startsAt: startsAt ? new Date(startsAt) : null,
+          endsAt: endsAt ? new Date(endsAt) : null,
+          createdBy: user.userId,
+          ...(createdAt ? { createdAt: new Date(createdAt) } : {}),
+        },
+      })
+      restoredPetitions++
+
+      for (const sig of signatures) {
+        const { createdAt: sigCreatedAt, verifiedAt, withdrawnAt, ...sigFields } = sig
+
+        await tx.signature.upsert({
+          where: { petitionId_email: { petitionId: petition.id, email: sigFields.email } },
+          update: {
+            fullName: sigFields.fullName,
+            city: sigFields.city ?? null,
+            country: sigFields.country ?? null,
+            comment: sigFields.comment ?? null,
+            verified: sigFields.verified,
+            withdrawn: sigFields.withdrawn,
+            publicOptIn: sigFields.publicOptIn,
+            updatesOptIn: sigFields.updatesOptIn,
+            recipientShareOptIn: sigFields.recipientShareOptIn,
+            verifiedAt: verifiedAt ? new Date(verifiedAt) : null,
+            withdrawnAt: withdrawnAt ? new Date(withdrawnAt) : null,
+          },
+          create: {
+            petitionId: petition.id,
+            fullName: sigFields.fullName,
+            email: sigFields.email,
+            city: sigFields.city ?? null,
+            country: sigFields.country ?? null,
+            comment: sigFields.comment ?? null,
+            verified: sigFields.verified,
+            withdrawn: sigFields.withdrawn,
+            publicOptIn: sigFields.publicOptIn,
+            updatesOptIn: sigFields.updatesOptIn,
+            recipientShareOptIn: sigFields.recipientShareOptIn,
+            verifiedAt: verifiedAt ? new Date(verifiedAt) : null,
+            withdrawnAt: withdrawnAt ? new Date(withdrawnAt) : null,
+            ...(sigCreatedAt ? { createdAt: new Date(sigCreatedAt) } : {}),
+          },
+        })
+        restoredSignatures++
+      }
+    }
+  })
+
+  await createAuditLog('backup.restored', 'System', 'restore', user.userId, {
+    restoredPetitions,
+    restoredSignatures,
+  })
+
+  return c.json({ message: 'Restore complete', restoredPetitions, restoredSignatures })
+})
+
 // ── Users ─────────────────────────────────────────────────────────────────────
 
 const userSchema = z.object({

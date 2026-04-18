@@ -225,4 +225,36 @@ export const adminApi = {
       {},
       token,
     ),
+
+  backup: async (token: string) => {
+    const res = await fetch(`${API_URL}/api/admin/backup`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) throw new ApiError(res.status, 'Backup failed')
+    const disposition = res.headers.get('content-disposition') ?? ''
+    const match = disposition.match(/filename="([^"]+)"/)
+    const filename = match ? match[1] : `opet-backup-${new Date().toISOString().split('T')[0]}.json`
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  },
+
+  restore: async (token: string, file: File) => {
+    const text = await file.text()
+    let data: unknown
+    try {
+      data = JSON.parse(text)
+    } catch {
+      throw new Error('Invalid JSON format in backup file.')
+    }
+    return request<{ message: string; restoredPetitions: number; restoredSignatures: number }>(
+      '/api/admin/restore',
+      { method: 'POST', body: JSON.stringify(data) },
+      token,
+    )
+  },
 }

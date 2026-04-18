@@ -39,6 +39,7 @@ export default function AdminLayout(props: AdminLayoutProps) {
               ['/admin/dashboard', '📊 Dashboard'],
               ['/admin/petitions', '📋 Petitions'],
               ['/admin/export', '📤 Export'],
+              ['/admin/backup', '💾 Backup'],
             ] as [string, string][]).map(([href, label]) => (
               <A
                 href={href}
