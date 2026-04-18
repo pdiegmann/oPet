@@ -17,6 +17,7 @@ const AdminPetitionsPage = lazy(() => import('./pages/admin/PetitionsPage.js'))
 const AdminPetitionEditorPage = lazy(() => import('./pages/admin/PetitionEditorPage.js'))
 const AdminSignaturesPage = lazy(() => import('./pages/admin/SignaturesPage.js'))
 const AdminExportPage = lazy(() => import('./pages/admin/ExportPage.js'))
+const AdminBackupPage = lazy(() => import('./pages/admin/BackupPage.js'))
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
         <Route path="/petitions/:id/edit" component={AdminPetitionEditorPage} />
         <Route path="/petitions/:id/signatures" component={AdminSignaturesPage} />
         <Route path="/export" component={AdminExportPage} />
+        <Route path="/backup" component={AdminBackupPage} />
       </Route>
     </Router>
   )
