@@ -34,6 +34,7 @@ export default function SignaturesPage() {
   const [verifiedFilter, setVerifiedFilter] = createSignal<FilterOption>(VERIFIED_OPTIONS[0])
   const [withdrawnFilter, setWithdrawnFilter] = createSignal<FilterOption>(WITHDRAWN_OPTIONS[0])
   const [removeTarget, setRemoveTarget] = createSignal<Signature | null>(null)
+  const [error, setError] = createSignal<string | null>(null)
 
   const [data, { refetch }] = createResource(
     () => ({
@@ -60,7 +61,7 @@ export default function SignaturesPage() {
           options={VERIFIED_OPTIONS}
           optionValue="value"
           optionTextValue="label"
-          value={VERIFIED_OPTIONS.find((o) => o.value === verifiedFilter().value) ?? VERIFIED_OPTIONS[0]}
+          value={verifiedFilter()}
           onChange={(opt) => { if (opt) { setVerifiedFilter(opt); setPage(1) } }}
           itemComponent={(p) => <SelectItem item={p.item}>{p.item.rawValue.label}</SelectItem>}
         >
@@ -74,7 +75,7 @@ export default function SignaturesPage() {
           options={WITHDRAWN_OPTIONS}
           optionValue="value"
           optionTextValue="label"
-          value={WITHDRAWN_OPTIONS.find((o) => o.value === withdrawnFilter().value) ?? WITHDRAWN_OPTIONS[0]}
+          value={withdrawnFilter()}
           onChange={(opt) => { if (opt) { setWithdrawnFilter(opt); setPage(1) } }}
           itemComponent={(p) => <SelectItem item={p.item}>{p.item.rawValue.label}</SelectItem>}
         >
@@ -97,6 +98,14 @@ export default function SignaturesPage() {
         <Alert variant="destructive">
           <AlertDescription>Failed to load signatures.</AlertDescription>
         </Alert>
+      </Show>
+
+      <Show when={error()}>
+        {(msg) => (
+          <Alert variant="destructive" class="mb-4">
+            <AlertDescription>{msg()}</AlertDescription>
+          </Alert>
+        )}
       </Show>
 
       <Show when={data()}>
@@ -130,7 +139,7 @@ export default function SignaturesPage() {
                     }
                   >
                     <For each={d().signatures}>
-                      {(sig: Signature) => (
+                      {(sig) => (
                         <TableRow>
                           <TableCell class="font-medium">{sig.fullName}</TableCell>
                           <TableCell class="text-sm">{sig.email}</TableCell>
@@ -184,8 +193,8 @@ export default function SignaturesPage() {
           try {
             await adminApi.removeSignature(token, sig.id)
             refetch()
-          } catch (_e: unknown) {
-            // silently ignore — could show toast in future
+          } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : 'Failed to remove signature')
           }
         }}
       />
