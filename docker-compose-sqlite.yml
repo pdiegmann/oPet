@@ -4,7 +4,7 @@ services:
     build: ./backend
     restart: unless-stopped
     container_name: backend
-    mount:
+    volumes:
       - opet_data:/var/lib/opet
     env_file:
       - .env
