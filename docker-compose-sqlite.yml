@@ -4,6 +4,8 @@ services:
     image: ghcr.io/pdiegmann/opet/backend:latest
     restart: unless-stopped
     container_name: backend
+    ports:
+      - "3001:3001"
     networks:
       - opet_network
     volumes:
@@ -28,6 +30,8 @@ services:
     image: ghcr.io/pdiegmann/opet/frontend:latest
     restart: unless-stopped
     container_name: frontend
+    ports:
+      - "3080:80"
     networks:
       - opet_network
     depends_on:
