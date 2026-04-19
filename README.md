@@ -44,15 +44,9 @@ docker compose up -d
 The backend will automatically run database migrations and start on port **3001**.
 The frontend will be available on port **3000**.
 
-### 3. Seed the admin user
+### 3. First login
 
-```bash
-docker compose exec backend bun run db:seed
-```
-
-Default credentials (from `.env`): `admin@example.com` / `changeme-admin-password`
-
-**Change these before going to production!**
+The admin user is created automatically when the backend starts (seeded from `ADMIN_EMAIL` / `ADMIN_PASSWORD` in your `.env`).
 
 ### 4. Open the app
 
@@ -61,22 +55,31 @@ Default credentials (from `.env`): `admin@example.com` / `changeme-admin-passwor
 
 ## Development
 
-### Backend
+### Quick start (monorepo)
+
+```bash
+cp .env.example .env   # and fill in your settings
+bun install
+bun dev
+```
+
+This starts both the backend (port **3001**) and the frontend dev server (port **3000**) in parallel.
+The backend automatically applies the database schema and seeds the admin user on first run.
+
+### Individual services
+
+**Backend only**
 
 ```bash
 cd backend
-cp ../.env.example .env   # and fill in DATABASE_URL etc.
-bun install
-bunx prisma migrate dev
-bun run dev
+bun dev
 ```
 
-### Frontend
+**Frontend only**
 
 ```bash
 cd frontend
-bun install
-bun run dev
+bun dev
 ```
 
 ## Environment Variables

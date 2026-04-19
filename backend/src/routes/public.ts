@@ -8,6 +8,9 @@ import { createAuditLog } from '../lib/audit.js'
 
 export const publicRoutes = new Hono()
 
+const dbUrl = (process.env.DATABASE_URL ?? '').trim()
+const isPostgres = dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://')
+
 // ── Petition listing ──────────────────────────────────────────────────────────
 
 publicRoutes.get('/petitions', async (c) => {
@@ -16,14 +19,16 @@ publicRoutes.get('/petitions', async (c) => {
   const limit = Math.min(50, Math.max(1, parseInt(c.req.query('limit') ?? '10')))
   const skip = (page - 1) * limit
 
+  const searchFilter = (field: 'title' | 'summary') =>
+    isPostgres
+      ? { [field]: { contains: search, mode: 'insensitive' as const } }
+      : { [field]: { contains: search } }
+
   const where = {
     status: 'active' as const,
     ...(search
       ? {
-          OR: [
-            { title: { contains: search, mode: 'insensitive' as const } },
-            { summary: { contains: search, mode: 'insensitive' as const } },
-          ],
+          OR: [searchFilter('title'), searchFilter('summary')],
         }
       : {}),
   }
