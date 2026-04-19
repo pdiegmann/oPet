@@ -1,6 +1,14 @@
 import { createResource, createSignal, For, Show } from 'solid-js'
 import { useParams, useNavigate } from '@solidjs/router'
-import { api, SignPayload } from '../lib/api.js'
+import { api, SignPayload } from '@/lib/api.js'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Progress } from '@/components/ui/progress'
+import { Skeleton } from '@/components/ui/skeleton'
+import { TextField, TextFieldInput, TextFieldLabel, TextFieldTextArea } from '@/components/ui/text-field'
+import { StatusBadge, type PetitionStatus } from '@/components/StatusBadge'
 
 export default function PetitionPage() {
   const params = useParams<{ slug: string }>()
@@ -34,8 +42,7 @@ export default function PetitionPage() {
       await api.signPetition(params.slug, form())
       navigate(`/petition/${params.slug}/success`)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Submission failed. Please try again.'
-      setError(msg)
+      setError(err instanceof Error ? err.message : 'Submission failed. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -44,65 +51,69 @@ export default function PetitionPage() {
   return (
     <div>
       <Show when={petition.loading}>
-        <p style="color: var(--color-text-muted);">Loading…</p>
+        <div class="space-y-4">
+          <Skeleton class="h-8 w-2/3 rounded" animate />
+          <Skeleton class="h-4 w-1/3 rounded" animate />
+          <Skeleton class="h-40 w-full rounded" animate />
+        </div>
       </Show>
+
       <Show when={petition.error}>
-        <div class="alert alert-error">Petition not found.</div>
+        <Alert variant="destructive">
+          <AlertDescription>Petition not found.</AlertDescription>
+        </Alert>
       </Show>
 
       <Show when={petition()}>
         {(p) => (
-          <div style="display: grid; grid-template-columns: 1fr 380px; gap: 2rem; align-items: start;">
+          <div class="grid gap-8" style="grid-template-columns: 1fr 380px; align-items: start;">
             {/* Petition details */}
             <div>
-              <div style="margin-bottom: 1rem;">
-                <span class={`badge badge-${p().status}`}>{p().status}</span>
+              <div class="mb-3">
+                <StatusBadge status={p().status as PetitionStatus} type="petition" />
               </div>
-              <h1 style="font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem;">{p().title}</h1>
-              <p style="color: var(--color-text-muted); margin-bottom: 0.35rem;">
+              <h1 class="text-3xl font-extrabold mb-2">{p().title}</h1>
+              <p class="text-muted-foreground mb-1">
                 To: <strong>{p().recipientName}</strong>
                 <Show when={p().recipientDescription}>
                   {' – '}{p().recipientDescription}
                 </Show>
               </p>
-              <p style="color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;">
+              <p class="text-sm text-muted-foreground mb-4">
                 {p().signatureCount.toLocaleString()} signatures
                 <Show when={p().goalCount}> of {p().goalCount?.toLocaleString()} goal</Show>
               </p>
+
               <Show when={p().goalCount}>
-                <div class="progress-bar" style="margin-bottom: 1.5rem;">
-                  <div
-                    class="progress-bar-fill"
-                    style={`width: ${Math.min(100, Math.round((p().signatureCount / (p().goalCount ?? 1)) * 100))}%`}
-                  />
-                </div>
+                <Progress
+                  value={Math.min(100, Math.round((p().signatureCount / (p().goalCount ?? 1)) * 100))}
+                  class="mb-6"
+                />
               </Show>
 
               <div
-                style="line-height: 1.75; white-space: pre-wrap; margin-bottom: 2rem;"
+                class="leading-relaxed mb-8"
                 innerHTML={p().body.replace(/\n/g, '<br>')}
               />
 
               <Show when={p().allowPublicNames && p().signatures && p().signatures!.length > 0}>
-                <h2 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem;">
-                  Recent signers
-                </h2>
-                <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem;">
+                <h2 class="text-lg font-bold mb-4">Recent signers</h2>
+                <div class="flex flex-col gap-3 mb-8">
                   <For each={p().signatures}>
                     {(sig) => (
-                      <div class="card" style="padding: 0.85rem 1rem;">
-                        <strong>{sig.fullName}</strong>
-                        <Show when={sig.city || sig.country}>
-                          <span style="color: var(--color-text-muted); font-size: 0.85rem; margin-left: 0.5rem;">
-                            {[sig.city, sig.country].filter(Boolean).join(', ')}
-                          </span>
-                        </Show>
-                        <Show when={sig.comment}>
-                          <p style="margin-top: 0.35rem; font-size: 0.9rem; color: var(--color-text-muted);">
-                            "{sig.comment}"
-                          </p>
-                        </Show>
-                      </div>
+                      <Card>
+                        <CardContent class="py-3">
+                          <strong>{sig.fullName}</strong>
+                          <Show when={sig.city || sig.country}>
+                            <span class="text-muted-foreground text-sm ml-2">
+                              {[sig.city, sig.country].filter(Boolean).join(', ')}
+                            </span>
+                          </Show>
+                          <Show when={sig.comment}>
+                            <p class="mt-1 text-sm text-muted-foreground">"{sig.comment}"</p>
+                          </Show>
+                        </CardContent>
+                      </Card>
                     )}
                   </For>
                 </div>
@@ -111,131 +122,118 @@ export default function PetitionPage() {
 
             {/* Signature form */}
             <aside>
-              <div class="card" style="position: sticky; top: 1.5rem;">
-                <h2 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 1.25rem;">
-                  Sign this petition
-                </h2>
+              <Card class="sticky top-6">
+                <CardHeader>
+                  <CardTitle>Sign this petition</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Show when={error()}>
+                    <Alert variant="destructive" class="mb-4">
+                      <AlertDescription>{error()}</AlertDescription>
+                    </Alert>
+                  </Show>
 
-                <Show when={error()}>
-                  <div class="alert alert-error">{error()}</div>
-                </Show>
-
-                <Show
-                  when={p().status === 'active'}
-                  fallback={
-                    <div class="alert alert-info">
-                      This petition is currently {p().status} and not accepting new signatures.
-                    </div>
-                  }
-                >
-                  <form onSubmit={handleSubmit}>
-                    <div class="form-group">
-                      <label for="fullName">Full name *</label>
-                      <input
-                        id="fullName"
-                        type="text"
-                        required
-                        value={form().fullName}
-                        onInput={(e) => update('fullName', e.currentTarget.value)}
-                      />
-                    </div>
-
-                    <div class="form-group">
-                      <label for="email">Email address *</label>
-                      <input
-                        id="email"
-                        type="email"
-                        required
-                        value={form().email}
-                        onInput={(e) => update('email', e.currentTarget.value)}
-                      />
-                    </div>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                      <div class="form-group">
-                        <label for="city">City</label>
-                        <input
-                          id="city"
+                  <Show
+                    when={p().status === 'active'}
+                    fallback={
+                      <Alert>
+                        <AlertDescription>
+                          This petition is currently {p().status} and not accepting new signatures.
+                        </AlertDescription>
+                      </Alert>
+                    }
+                  >
+                    <form onSubmit={handleSubmit} class="space-y-4">
+                      <TextField>
+                        <TextFieldLabel>Full name *</TextFieldLabel>
+                        <TextFieldInput
                           type="text"
-                          value={form().city ?? ''}
-                          onInput={(e) => update('city', e.currentTarget.value)}
+                          required
+                          value={form().fullName}
+                          onInput={(e) => update('fullName', e.currentTarget.value)}
                         />
-                      </div>
-                      <div class="form-group">
-                        <label for="country">Country</label>
-                        <input
-                          id="country"
-                          type="text"
-                          value={form().country ?? ''}
-                          onInput={(e) => update('country', e.currentTarget.value)}
-                        />
-                      </div>
-                    </div>
+                      </TextField>
 
-                    <Show when={p().allowComments}>
-                      <div class="form-group">
-                        <label for="comment">Comment (optional)</label>
-                        <textarea
-                          id="comment"
-                          rows="3"
-                          maxLength={1000}
-                          value={form().comment ?? ''}
-                          onInput={(e) => update('comment', e.currentTarget.value)}
+                      <TextField>
+                        <TextFieldLabel>Email address *</TextFieldLabel>
+                        <TextFieldInput
+                          type="email"
+                          required
+                          value={form().email}
+                          onInput={(e) => update('email', e.currentTarget.value)}
                         />
-                      </div>
-                    </Show>
+                      </TextField>
 
-                    <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.25rem;">
-                      <Show when={p().allowPublicNames}>
-                        <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 400; cursor: pointer;">
-                          <input
-                            type="checkbox"
-                            style="width: auto;"
-                            checked={form().publicOptIn}
-                            onChange={(e) => update('publicOptIn', e.currentTarget.checked)}
+                      <div class="grid grid-cols-2 gap-3">
+                        <TextField>
+                          <TextFieldLabel>City</TextFieldLabel>
+                          <TextFieldInput
+                            type="text"
+                            value={form().city ?? ''}
+                            onInput={(e) => update('city', e.currentTarget.value)}
                           />
-                          Display my name publicly
-                        </label>
+                        </TextField>
+                        <TextField>
+                          <TextFieldLabel>Country</TextFieldLabel>
+                          <TextFieldInput
+                            type="text"
+                            value={form().country ?? ''}
+                            onInput={(e) => update('country', e.currentTarget.value)}
+                          />
+                        </TextField>
+                      </div>
+
+                      <Show when={p().allowComments}>
+                        <TextField>
+                          <TextFieldLabel>Comment (optional)</TextFieldLabel>
+                          <TextFieldTextArea
+                            rows={3}
+                            maxLength={1000}
+                            value={form().comment ?? ''}
+                            onInput={(e) => update('comment', e.currentTarget.value)}
+                          />
+                        </TextField>
                       </Show>
 
-                      <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 400; cursor: pointer;">
-                        <input
-                          type="checkbox"
-                          style="width: auto;"
-                          checked={form().updatesOptIn}
-                          onChange={(e) => update('updatesOptIn', e.currentTarget.checked)}
-                        />
-                        Send me updates about this petition
-                      </label>
+                      <div class="flex flex-col gap-2">
+                        <Show when={p().allowPublicNames}>
+                          <label class="flex items-center gap-2 cursor-pointer text-sm">
+                            <Checkbox
+                              checked={form().publicOptIn}
+                              onChange={(checked) => update('publicOptIn', checked)}
+                            />
+                            Display my name publicly
+                          </label>
+                        </Show>
+                        <label class="flex items-center gap-2 cursor-pointer text-sm">
+                          <Checkbox
+                            checked={form().updatesOptIn}
+                            onChange={(checked) => update('updatesOptIn', checked)}
+                          />
+                          Send me updates about this petition
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer text-sm">
+                          <Checkbox
+                            checked={form().recipientShareOptIn}
+                            onChange={(checked) => update('recipientShareOptIn', checked)}
+                          />
+                          Share my signature with the recipient
+                        </label>
+                      </div>
 
-                      <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 400; cursor: pointer;">
-                        <input
-                          type="checkbox"
-                          style="width: auto;"
-                          checked={form().recipientShareOptIn}
-                          onChange={(e) => update('recipientShareOptIn', e.currentTarget.checked)}
-                        />
-                        Share my signature with the recipient
-                      </label>
-                    </div>
+                      <p class="text-xs text-muted-foreground">
+                        By signing, you agree to our{' '}
+                        <a href="/privacy" target="_blank" class="underline">Privacy Policy</a>.
+                        {p().requireVerification && ' You will receive a confirmation email.'}
+                      </p>
 
-                    <p style="font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: 1rem;">
-                      By signing, you agree to our{' '}
-                      <a href="/privacy" target="_blank">Privacy Policy</a>.
-                      {p().requireVerification && ' You will receive a confirmation email.'}
-                    </p>
-
-                    <button
-                      type="submit"
-                      class="btn btn-primary"
-                      disabled={submitting()}
-                      style="width: 100%;"
-                    >
-                      {submitting() ? 'Submitting…' : 'Sign petition'}
-                    </button>
-                  </form>
-                </Show>
-              </div>
+                      <Button type="submit" class="w-full" disabled={submitting()}>
+                        {submitting() ? 'Submitting…' : 'Sign petition'}
+                      </Button>
+                    </form>
+                  </Show>
+                </CardContent>
+              </Card>
             </aside>
           </div>
         )}
