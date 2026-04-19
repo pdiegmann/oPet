@@ -1,155 +1,179 @@
 import { createResource, createSignal, For, Show } from 'solid-js'
 import { A } from '@solidjs/router'
-import { adminApi, AdminPetition } from '../../lib/api.js'
-import { getToken } from '../../stores/auth.js'
+import { adminApi, AdminPetition } from '@/lib/api.js'
+import { getToken } from '@/stores/auth.js'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { PaginationControls } from '@/components/PaginationControls'
+import { StatusBadge, type PetitionStatus } from '@/components/StatusBadge'
+
+type StatusOpt = { label: string; value: string }
+const STATUS_OPTIONS: StatusOpt[] = [
+  { value: '', label: 'All statuses' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'active', label: 'Active' },
+  { value: 'paused', label: 'Paused' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'archived', label: 'Archived' },
+]
 
 export default function PetitionsPage() {
   const token = getToken() ?? ''
   const [page, setPage] = createSignal(1)
   const [statusFilter, setStatusFilter] = createSignal('')
+  const [archiveTarget, setArchiveTarget] = createSignal<AdminPetition | null>(null)
+  const [archiveError, setArchiveError] = createSignal<string | null>(null)
 
   const [data, { refetch }] = createResource(
     () => ({ page: page(), status: statusFilter() }),
     (params) => adminApi.getPetitions(token, params),
   )
 
-  async function handleArchive(p: AdminPetition) {
-    if (!confirm(`Archive petition "${p.title}"?`)) return
+  async function handleArchive() {
+    const p = archiveTarget()
+    if (!p) return
+    setArchiveError(null)
     try {
       await adminApi.archivePetition(token, p.id)
       refetch()
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Failed to archive petition')
+      setArchiveError(e instanceof Error ? e.message : 'Failed to archive petition')
     }
   }
 
   return (
     <div>
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h1 class="page-title" style="margin: 0;">Petitions</h1>
-        <A href="/admin/petitions/new" class="btn btn-primary">+ New petition</A>
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold">Petitions</h1>
+        <Button as={A} href="/admin/petitions/new">+ New petition</Button>
       </div>
 
-      {/* Filters */}
-      <div style="display: flex; gap: 0.75rem; margin-bottom: 1.25rem;">
-        <select
-          style="width: auto;"
-          value={statusFilter()}
-          onChange={(e) => { setStatusFilter(e.currentTarget.value); setPage(1) }}
+      <Show when={archiveError()}>
+        <Alert variant="destructive" class="mb-4">
+          <AlertDescription>{archiveError()}</AlertDescription>
+        </Alert>
+      </Show>
+
+      <div class="flex gap-3 mb-5">
+        <Select
+          options={STATUS_OPTIONS}
+          optionValue="value"
+          optionTextValue="label"
+          value={STATUS_OPTIONS.find(o => o.value === statusFilter()) ?? null}
+          onChange={(opt) => { setStatusFilter(opt?.value ?? ''); setPage(1) }}
+          itemComponent={(props) => (
+            <SelectItem item={props.item}>{props.item.rawValue.label}</SelectItem>
+          )}
         >
-          <option value="">All statuses</option>
-          <option value="draft">Draft</option>
-          <option value="active">Active</option>
-          <option value="paused">Paused</option>
-          <option value="completed">Completed</option>
-          <option value="archived">Archived</option>
-        </select>
+          <SelectTrigger class="w-[180px]">
+            <SelectValue<StatusOpt>>{(state) => state.selectedOption()?.label ?? 'All statuses'}</SelectValue>
+          </SelectTrigger>
+          <SelectContent />
+        </Select>
       </div>
 
       <Show when={data.loading}>
-        <p style="color: var(--color-text-muted);">Loading…</p>
+        <Skeleton class="h-64 w-full rounded-lg" animate />
       </Show>
 
       <Show when={data.error}>
-        <div class="alert alert-error">Failed to load petitions.</div>
+        <Alert variant="destructive">
+          <AlertDescription>Failed to load petitions.</AlertDescription>
+        </Alert>
       </Show>
 
       <Show when={data()}>
         {(d) => (
           <>
-            <div class="card" style="padding: 0; overflow: hidden;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Title</th>
-                    <th>Status</th>
-                    <th>Signatures</th>
-                    <th>Created</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <Show
-                    when={d().petitions.length > 0}
-                    fallback={
-                      <tr>
-                        <td colspan="5" style="text-align: center; color: var(--color-text-muted);">
-                          No petitions found
-                        </td>
-                      </tr>
-                    }
-                  >
-                    <For each={d().petitions}>
-                      {(p: AdminPetition) => (
-                        <tr>
-                          <td>
-                            <div style="font-weight: 600; font-size: 0.95rem;">{p.title}</div>
-                            <div style="font-size: 0.8rem; color: var(--color-text-muted);">/{p.slug}</div>
-                          </td>
-                          <td><span class={`badge badge-${p.status}`}>{p.status}</span></td>
-                          <td>{(p.signatureCount ?? 0).toLocaleString()}</td>
-                          <td style="font-size: 0.85rem; color: var(--color-text-muted);">
-                            {new Date(p.createdAt).toLocaleDateString()}
-                          </td>
-                          <td>
-                            <div style="display: flex; gap: 0.4rem;">
-                              <A
-                                href={`/admin/petitions/${p.id}/edit`}
-                                class="btn btn-secondary"
-                                style="font-size: 0.8rem; padding: 0.3rem 0.7rem;"
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Signatures</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <Show
+                  when={d().petitions.length > 0}
+                  fallback={
+                    <TableRow>
+                      <TableCell colspan={5} class="text-center text-muted-foreground py-8">
+                        No petitions found
+                      </TableCell>
+                    </TableRow>
+                  }
+                >
+                  <For each={d().petitions}>
+                    {(p: AdminPetition) => (
+                      <TableRow>
+                        <TableCell>
+                          <div class="font-semibold text-sm">{p.title}</div>
+                          <div class="text-xs text-muted-foreground">/{p.slug}</div>
+                        </TableCell>
+                        <TableCell>
+                          <StatusBadge status={p.status as PetitionStatus} type="petition" />
+                        </TableCell>
+                        <TableCell class="text-sm">
+                          {(p.signatureCount ?? 0).toLocaleString()}
+                        </TableCell>
+                        <TableCell class="text-sm text-muted-foreground">
+                          {new Date(p.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div class="flex gap-1.5">
+                            <Button as={A} href={`/admin/petitions/${p.id}/edit`} variant="outline" size="sm">
+                              Edit
+                            </Button>
+                            <Button as={A} href={`/admin/petitions/${p.id}/signatures`} variant="outline" size="sm">
+                              Signatures
+                            </Button>
+                            <Show when={p.status !== 'archived'}>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setArchiveTarget(p)}
                               >
-                                Edit
-                              </A>
-                              <A
-                                href={`/admin/petitions/${p.id}/signatures`}
-                                class="btn btn-secondary"
-                                style="font-size: 0.8rem; padding: 0.3rem 0.7rem;"
-                              >
-                                Signatures
-                              </A>
-                              <Show when={p.status !== 'archived'}>
-                                <button
-                                  class="btn btn-danger"
-                                  style="font-size: 0.8rem; padding: 0.3rem 0.7rem;"
-                                  onClick={() => handleArchive(p)}
-                                >
-                                  Archive
-                                </button>
-                              </Show>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </For>
-                  </Show>
-                </tbody>
-              </table>
-            </div>
+                                Archive
+                              </Button>
+                            </Show>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </For>
+                </Show>
+              </TableBody>
+            </Table>
 
-            <Show when={d().totalPages > 1}>
-              <div class="pagination">
-                <button
-                  class="btn btn-secondary"
-                  disabled={page() <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  ← Prev
-                </button>
-                <span style="font-size: 0.9rem; color: var(--color-text-muted);">
-                  Page {page()} of {d().totalPages}
-                </span>
-                <button
-                  class="btn btn-secondary"
-                  disabled={page() >= d().totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next →
-                </button>
-              </div>
-            </Show>
+            <PaginationControls
+              page={page()}
+              totalPages={d().totalPages}
+              onPageChange={setPage}
+            />
           </>
         )}
       </Show>
+
+      <ConfirmDialog
+        open={archiveTarget() !== null}
+        onOpenChange={(open) => { if (!open) setArchiveTarget(null) }}
+        title="Archive petition"
+        description={`Archive "${archiveTarget()?.title}"? It will no longer accept signatures.`}
+        confirmLabel="Archive"
+        variant="destructive"
+        onConfirm={handleArchive}
+      />
     </div>
   )
 }
