@@ -1,7 +1,21 @@
 import { PrismaClient } from '@prisma/client'
+import { PrismaLibSql } from '@prisma/adapter-libsql'
+import { PrismaPg } from '@prisma/adapter-pg'
 import bcrypt from 'bcryptjs'
+import { resolve } from 'path'
 
-const prisma = new PrismaClient()
+if (!process.env.DATABASE_URL) {
+  process.env.DATABASE_URL = `file:${resolve(import.meta.dir, '..', 'opet.db')}`
+}
+
+const databaseUrl = process.env.DATABASE_URL
+const isPostgres =
+  databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://')
+const adapter = isPostgres
+  ? new PrismaPg(databaseUrl)
+  : new PrismaLibSql({ url: databaseUrl })
+
+const prisma = new PrismaClient({ adapter })
 
 async function main() {
   const email = process.env.ADMIN_EMAIL || 'admin@example.com'
