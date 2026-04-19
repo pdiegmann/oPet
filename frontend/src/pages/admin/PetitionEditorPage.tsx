@@ -2,6 +2,7 @@ import { createResource, createSignal, Show } from 'solid-js'
 import { useNavigate, useParams } from '@solidjs/router'
 import { adminApi } from '../../lib/api.js'
 import { getToken } from '../../stores/auth.js'
+import QuillEditor from '../../components/QuillEditor.js'
 
 interface PetitionFormData {
   slug: string
@@ -186,24 +187,23 @@ export default function PetitionEditorPage() {
 
           <div class="form-group">
             <label for="summary">Summary * (shown in listing)</label>
-            <textarea
+            <QuillEditor
               id="summary"
-              required
-              rows="2"
-              maxLength={500}
               value={form().summary}
-              onInput={(e) => update('summary', e.currentTarget.value)}
+              onValueChange={(val) => update('summary', val)}
+              placeholder="Short summary shown in the petition listing…"
+              minHeight="5rem"
             />
           </div>
 
           <div class="form-group">
             <label for="body">Body * (full petition text)</label>
-            <textarea
+            <QuillEditor
               id="body"
-              required
-              rows="10"
               value={form().body}
-              onInput={(e) => update('body', e.currentTarget.value)}
+              onValueChange={(val) => update('body', val)}
+              placeholder="Full petition text…"
+              minHeight="14rem"
             />
           </div>
         </div>
@@ -224,11 +224,12 @@ export default function PetitionEditorPage() {
 
           <div class="form-group">
             <label for="recipientDescription">Recipient description</label>
-            <input
+            <QuillEditor
               id="recipientDescription"
-              type="text"
               value={form().recipientDescription}
-              onInput={(e) => update('recipientDescription', e.currentTarget.value)}
+              onValueChange={(val) => update('recipientDescription', val)}
+              placeholder="Brief description of the petition recipient…"
+              minHeight="5rem"
             />
           </div>
         </div>
@@ -289,15 +290,19 @@ export default function PetitionEditorPage() {
                 ['allowComments', 'Allow comments'],
               ] as [keyof PetitionFormData, string][]
             ).map(([key, label]) => (
-              <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 400; cursor: pointer;">
-                <input
-                  type="checkbox"
-                  style="width: auto;"
-                  checked={form()[key] as boolean}
-                  onChange={(e) => update(key, e.currentTarget.checked)}
-                />
-                {label}
-              </label>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label
+                  style="display: flex; align-items: center; gap: 0.5rem; font-weight: 400; cursor: pointer; margin-bottom: 0;"
+                >
+                  <input
+                    type="checkbox"
+                    style="width: 1rem; height: 1rem; flex-shrink: 0; accent-color: var(--color-primary); cursor: pointer;"
+                    checked={form()[key] as boolean}
+                    onChange={(e) => update(key, e.currentTarget.checked)}
+                  />
+                  {label}
+                </label>
+              </div>
             ))}
           </div>
         </div>

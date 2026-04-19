@@ -65,15 +65,6 @@ export default function AdminLayout(props: AdminLayoutProps) {
 
         {/* Main content */}
         <div style="flex: 1; display: flex; flex-direction: column; overflow: auto;">
-          <header
-            style="background: var(--color-surface); border-bottom: 1px solid var(--color-border);
-                   padding: 0.75rem 1.5rem; display: flex; align-items: center; justify-content: flex-end;"
-          >
-            <span style="font-size: 0.85rem; color: var(--color-text-muted);">
-              Admin Panel
-            </span>
-          </header>
-
           <main style="padding: 2rem 1.5rem; flex: 1;">
             {props.children}
           </main>
