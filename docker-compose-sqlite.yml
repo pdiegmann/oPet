@@ -6,7 +6,7 @@ services:
     ports:
       - "3001:3001"
     networks:
-      - traefik
+      - homelab_network
     volumes:
       - opet_data:/var/lib/opet
     env_file:
@@ -17,10 +17,12 @@ services:
       NODE_ENV: production
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=traefik"
+      - "traefik.docker.network=homelab_network"
+      - "com.centurylinklabs.watchtower.enable=false"
       - "traefik.http.routers.opet-backend.rule=Host(`opet.hnnl.eu`) && PathPrefix(`/api`)"
       - "traefik.http.routers.opet-backend.entrypoints=websecure"
       - "traefik.http.routers.opet-backend.tls=true"
+      - "traefik.http.routers.opet-backend.tls.certresolver=${CERT_RESOLVER:-letsencrypt}"
       - "traefik.http.services.opet-backend.loadbalancer.server.port=3001"
 
   frontend:
@@ -30,20 +32,22 @@ services:
     ports:
       - "3080:80"
     networks:
-      - traefik
+      - homelab_network
     depends_on:
       - backend
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=traefik"
+      - "traefik.docker.network=homelab_network"
+      - "com.centurylinklabs.watchtower.enable=false"
       - "traefik.http.routers.opet-frontend.rule=Host(`opet.hnnl.eu`) && !PathPrefix(`/api`)"
       - "traefik.http.routers.opet-frontend.entrypoints=websecure"
       - "traefik.http.routers.opet-frontend.tls=true"
+      - "traefik.http.routers.opet-frontend.tls.certresolver=${CERT_RESOLVER:-letsencrypt}"
       - "traefik.http.services.opet-frontend.loadbalancer.server.port=80"
 
 volumes:
   opet_data:
 
 networks:
-  traefik:
+  homelab_network:
     external: true
