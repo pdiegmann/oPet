@@ -144,11 +144,18 @@ export default function PetitionEditorPage() {
     <div class="max-w-3xl">
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold">{isEdit ? 'Edit petition' : 'New petition'}</h1>
-        <Show when={isEdit && existing()}>
-          <Button variant="outline" size="sm" as="a" href={`/petition/${existing()?.slug}`} target="_blank">
-            View public page ↗
-          </Button>
-        </Show>
+        <div class="flex items-center gap-2">
+          <Show when={isEdit && params.id}>
+            <Button variant="outline" size="sm" as="a" href={`/admin/petitions/${params.id}/updates`}>
+              Manage updates
+            </Button>
+          </Show>
+          <Show when={isEdit && existing()}>
+            <Button variant="outline" size="sm" as="a" href={`/petition/${existing()?.slug}`} target="_blank">
+              View public page ↗
+            </Button>
+          </Show>
+        </div>
       </div>
 
       <Show when={existing.loading}>

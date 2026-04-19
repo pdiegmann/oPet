@@ -16,6 +16,10 @@ model User {
   petitions    Petition[]
   auditLogs    AuditLog[]
   exports      Export[]
+  petitionUpdatesCreated          PetitionUpdate[]        @relation("PetitionUpdateCreatedBy")
+  petitionUpdatesUpdated          PetitionUpdate[]        @relation("PetitionUpdateUpdatedBy")
+  petitionUpdatesDeleted          PetitionUpdate[]        @relation("PetitionUpdateDeletedBy")
+  petitionUpdateVersionsPublished PetitionUpdateVersion[] @relation("PetitionUpdateVersionPublishedBy")
 }
 
 model Petition {
@@ -39,6 +43,43 @@ model Petition {
   creator               User        @relation(fields: [createdBy], references: [id])
   signatures            Signature[]
   exports               Export[]
+  updates               PetitionUpdate[]
+}
+
+model PetitionUpdate {
+  id              String                 @id @default(uuid())
+  petitionId      String
+  currentTitle    String
+  currentContent  String
+  lastPublishedAt DateTime?
+  createdBy       String
+  updatedBy       String?
+  deletedAt       DateTime?
+  deletedBy       String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  petition        Petition               @relation(fields: [petitionId], references: [id])
+  creator         User                   @relation("PetitionUpdateCreatedBy", fields: [createdBy], references: [id])
+  updater         User?                  @relation("PetitionUpdateUpdatedBy", fields: [updatedBy], references: [id])
+  deleter         User?                  @relation("PetitionUpdateDeletedBy", fields: [deletedBy], references: [id])
+  versions        PetitionUpdateVersion[]
+
+  @@index([petitionId, createdAt])
+}
+
+model PetitionUpdateVersion {
+  id               String         @id @default(uuid())
+  petitionUpdateId String
+  versionNumber    Int
+  title            String
+  content          String
+  publishedAt      DateTime       @default(now())
+  publishedBy      String
+  petitionUpdate   PetitionUpdate @relation(fields: [petitionUpdateId], references: [id])
+  publisher        User           @relation("PetitionUpdateVersionPublishedBy", fields: [publishedBy], references: [id])
+
+  @@unique([petitionUpdateId, versionNumber])
+  @@index([petitionUpdateId, publishedAt])
 }
 
 model Signature {

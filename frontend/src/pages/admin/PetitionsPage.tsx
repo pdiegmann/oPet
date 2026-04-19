@@ -135,6 +135,9 @@ export default function PetitionsPage() {
                             <Button as={A} href={`/admin/petitions/${p.id}/edit`} variant="outline" size="sm">
                               Edit
                             </Button>
+                            <Button as={A} href={`/admin/petitions/${p.id}/updates`} variant="outline" size="sm">
+                              Updates
+                            </Button>
                             <Button as={A} href={`/admin/petitions/${p.id}/signatures`} variant="outline" size="sm">
                               Signatures
                             </Button>

@@ -9,12 +9,18 @@ import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TextField, TextFieldInput, TextFieldLabel, TextFieldTextArea } from '@/components/ui/text-field'
 import { StatusBadge, type PetitionStatus } from '@/components/StatusBadge'
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 
 export default function PetitionPage() {
   const params = useParams<{ slug: string }>()
   const navigate = useNavigate()
 
   const [petition] = createResource(() => params.slug, api.getPetition)
+  const [updates] = createResource(() => params.slug, (slug) =>
+    api.getPetitionUpdates(slug, { includeVersionHistory: true }),
+  )
+  const [expandedUpdates, setExpandedUpdates] = createSignal<Set<string>>(new Set())
+  const [historyShownUpdates, setHistoryShownUpdates] = createSignal<Set<string>>(new Set())
 
   const [form, setForm] = createSignal<SignPayload>({
     fullName: '',
@@ -31,6 +37,24 @@ export default function PetitionPage() {
 
   function update<K extends keyof SignPayload>(key: K, value: SignPayload[K]) {
     setForm((f) => ({ ...f, [key]: value }))
+  }
+
+  function toggleExpanded(updateId: string) {
+    setExpandedUpdates((prev) => {
+      const next = new Set(prev)
+      if (next.has(updateId)) next.delete(updateId)
+      else next.add(updateId)
+      return next
+    })
+  }
+
+  function toggleHistory(updateId: string) {
+    setHistoryShownUpdates((prev) => {
+      const next = new Set(prev)
+      if (next.has(updateId)) next.delete(updateId)
+      else next.add(updateId)
+      return next
+    })
   }
 
   async function handleSubmit(e: Event) {
@@ -66,17 +90,32 @@ export default function PetitionPage() {
 
       <Show when={petition()}>
         {(p) => (
-          <div class="grid gap-8" style="grid-template-columns: 1fr 380px; align-items: start;">
+          <div class="grid grid-cols-1 items-start gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
             {/* Petition details */}
-            <div>
+            <div class="min-w-0">
               <div class="mb-3">
                 <StatusBadge status={p().status as PetitionStatus} type="petition" />
               </div>
-              <h1 class="text-3xl font-extrabold mb-2">{p().title}</h1>
-              <p class="text-muted-foreground mb-1">
-                To: <strong>{p().recipientName}</strong>
-                <Show when={p().recipientDescription}>
-                  {' – '}{p().recipientDescription}
+              <h1 class="mb-2 break-words text-3xl font-extrabold">{p().title}</h1>
+              <Show when={p().summary}>
+                <div class="petition-summary mb-4 text-muted-foreground" innerHTML={p().summary} />
+              </Show>
+              <p class="mb-1 text-muted-foreground">
+                To:{' '}
+                <Show when={p().recipientDescription} fallback={<strong>{p().recipientName}</strong>}>
+                  {' '}
+                  <HoverCard openDelay={150} closeDelay={100}>
+                    <HoverCardTrigger
+                      as="button"
+                      type="button"
+                      class="inline-flex items-center rounded-sm underline decoration-dotted underline-offset-4 hover:text-foreground"
+                    >
+                      <strong>{p().recipientName}</strong>
+                    </HoverCardTrigger>
+                    <HoverCardContent class="w-80">
+                      <div class="petition-body text-sm text-foreground" innerHTML={p().recipientDescription!} />
+                    </HoverCardContent>
+                  </HoverCard>
                 </Show>
               </p>
               <p class="text-sm text-muted-foreground mb-4">
@@ -92,9 +131,96 @@ export default function PetitionPage() {
               </Show>
 
               <div
-                class="leading-relaxed mb-8"
-                innerHTML={p().body.replace(/\n/g, '<br>')}
+                class="petition-body mb-8 leading-relaxed"
+                innerHTML={p().body}
               />
+
+              <Show when={!updates.loading}>
+                <section class="mb-8">
+                  <h2 class="text-lg font-bold mb-3">Updates</h2>
+                  <Show
+                    when={(updates()?.updates.length ?? 0) > 0}
+                    fallback={<p class="text-sm text-muted-foreground">No updates published yet.</p>}
+                  >
+                    <div class="space-y-4">
+                      <For each={updates()?.updates}>
+                        {(update) => (
+                          <Card>
+                            <button
+                              type="button"
+                              class="w-full px-4 py-3 text-left"
+                              onClick={() => toggleExpanded(update.id)}
+                            >
+                              <div class="flex items-center justify-between gap-3">
+                                <div class="text-base font-semibold">
+                                  {update.isDeleted ? 'Deleted update' : (update.latestVersion?.title ?? 'Published update')}
+                                </div>
+                                <div class="text-xs text-muted-foreground whitespace-nowrap">
+                                  {new Date(update.latestVersion?.publishedAt ?? update.createdAt).toLocaleString()}
+                                </div>
+                              </div>
+                            </button>
+                            <Show when={expandedUpdates().has(update.id)}>
+                              <CardContent class="space-y-3 pt-0">
+                                <Show when={!update.isDeleted && update.latestVersion}>
+                                  <div class="petition-body" innerHTML={update.latestVersion!.content} />
+                                </Show>
+                                <Show when={update.isDeleted}>
+                                  <p class="text-sm text-muted-foreground">
+                                    This update was deleted.
+                                  </p>
+                                  <Show when={update.latestVersion}>
+                                    <div class="rounded border p-3">
+                                      <div class="text-sm font-medium">
+                                        Latest published: {update.latestVersion?.title}
+                                      </div>
+                                      <p class="text-xs text-muted-foreground mt-1">
+                                        Published {new Date(update.latestVersion!.publishedAt).toLocaleString()}
+                                      </p>
+                                      <div class="petition-body mt-2 text-sm" innerHTML={update.latestVersion!.content} />
+                                    </div>
+                                  </Show>
+                                </Show>
+
+                                <Show when={(update.versions?.length ?? 0) > 1}>
+                                  <div class="border-t pt-3">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => toggleHistory(update.id)}
+                                    >
+                                      {historyShownUpdates().has(update.id) ? 'Hide version history' : 'Show version history'}
+                                    </Button>
+                                  </div>
+                                </Show>
+
+                                <Show when={historyShownUpdates().has(update.id) && update.versions && update.versions!.length > 1}>
+                                  <div class="space-y-3">
+                                    <h3 class="text-sm font-semibold">Version history</h3>
+                                    <For each={update.versions!.slice(1)}>
+                                      {(version) => (
+                                        <div class="rounded border p-3">
+                                          <div class="text-sm font-medium">
+                                            v{version.versionNumber}: {version.title}
+                                          </div>
+                                          <p class="text-xs text-muted-foreground mt-1">
+                                            Published {new Date(version.publishedAt).toLocaleString()}
+                                          </p>
+                                          <div class="petition-body mt-2 text-sm" innerHTML={version.content} />
+                                        </div>
+                                      )}
+                                    </For>
+                                  </div>
+                                </Show>
+                              </CardContent>
+                            </Show>
+                          </Card>
+                        )}
+                      </For>
+                    </div>
+                  </Show>
+                </section>
+              </Show>
 
               <Show when={p().allowPublicNames && p().signatures && p().signatures!.length > 0}>
                 <h2 class="text-lg font-bold mb-4">Recent signers</h2>
@@ -121,8 +247,8 @@ export default function PetitionPage() {
             </div>
 
             {/* Signature form */}
-            <aside>
-              <Card class="sticky top-6">
+            <aside class="min-w-0">
+              <Card class="lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
                 <CardHeader>
                   <CardTitle>Sign this petition</CardTitle>
                 </CardHeader>

@@ -119,6 +119,42 @@
   }
 }
 
+.petition-body {
+  overflow-wrap: anywhere;
+}
+
+.petition-summary {
+  overflow-wrap: anywhere;
+}
+
+.petition-summary p {
+  margin: 0;
+}
+
+.petition-body img,
+.petition-body iframe,
+.petition-body video,
+.petition-body table {
+  max-width: 100%;
+}
+
+.petition-body img,
+.petition-body iframe,
+.petition-body video {
+  height: auto;
+}
+
+.petition-body table {
+  display: block;
+  overflow-x: auto;
+}
+
+.petition-body pre,
+.petition-body code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 @media (max-width: 640px) {
   .container {
     @apply px-4;

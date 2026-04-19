@@ -78,11 +78,11 @@ adminRoutes.get('/dashboard', async (c) => {
 
 const petitionSchema = z.object({
   slug: z.string().min(2).max(100).regex(/^[a-z0-9-]+$/),
-  title: z.string().min(5).max(200),
-  summary: z.string().min(10).max(500),
+  title: z.string().min(4).max(200),
+  summary: z.string().min(10).max(1500),
   body: z.string().min(20),
   recipientName: z.string().min(2).max(200),
-  recipientDescription: z.string().max(500).optional(),
+  recipientDescription: z.string().max(1500).optional(),
   status: z.enum(['draft', 'active', 'paused', 'completed', 'archived']).default('draft'),
   goalCount: z.number().int().positive().optional(),
   allowPublicNames: z.boolean().default(false),
@@ -192,6 +192,203 @@ adminRoutes.delete('/petitions/:id', async (c) => {
   return c.json({ message: 'Petition archived' })
 })
 
+// ── Petition Updates ──────────────────────────────────────────────────────────
+
+const petitionUpdateDraftSchema = z.object({
+  title: z.string().min(2).max(200),
+  content: z.string().min(1),
+})
+
+const petitionUpdatePatchSchema = petitionUpdateDraftSchema.partial()
+
+const petitionUpdatePublishSchema = z.object({
+  title: z.string().min(2).max(200).optional(),
+  content: z.string().min(1).optional(),
+})
+
+adminRoutes.get('/petitions/:id/updates', async (c) => {
+  const petition = await prisma.petition.findUnique({ where: { id: c.req.param('id') } })
+  if (!petition) return c.json({ error: 'Not found' }, 404)
+
+  const updates = await prisma.petitionUpdate.findMany({
+    where: { petitionId: petition.id },
+    orderBy: [{ lastPublishedAt: 'desc' }, { createdAt: 'desc' }],
+    include: {
+      creator: { select: { id: true, email: true } },
+      updater: { select: { id: true, email: true } },
+      deleter: { select: { id: true, email: true } },
+      versions: {
+        orderBy: { versionNumber: 'desc' },
+        include: { publisher: { select: { id: true, email: true } } },
+      },
+    },
+  })
+
+  return c.json({ updates })
+})
+
+adminRoutes.post('/petitions/:id/updates', async (c) => {
+  const user = c.get('user')
+  const petition = await prisma.petition.findUnique({ where: { id: c.req.param('id') } })
+  if (!petition) return c.json({ error: 'Not found' }, 404)
+
+  const body = await c.req.json().catch(() => null)
+  const parsed = petitionUpdateDraftSchema.safeParse(body)
+  if (!parsed.success) return c.json({ error: 'Validation error', details: parsed.error.flatten() }, 422)
+
+  const update = await prisma.petitionUpdate.create({
+    data: {
+      petitionId: petition.id,
+      currentTitle: parsed.data.title,
+      currentContent: parsed.data.content,
+      createdBy: user.userId,
+      updatedBy: user.userId,
+    },
+    include: {
+      creator: { select: { id: true, email: true } },
+      updater: { select: { id: true, email: true } },
+      versions: true,
+    },
+  })
+
+  await createAuditLog('petition.update.created', 'PetitionUpdate', update.id, user.userId, {
+    petitionId: petition.id,
+  })
+
+  return c.json(update, 201)
+})
+
+adminRoutes.put('/petitions/:id/updates/:updateId', async (c) => {
+  const user = c.get('user')
+  const body = await c.req.json().catch(() => null)
+  const parsed = petitionUpdatePatchSchema.safeParse(body)
+  if (!parsed.success) return c.json({ error: 'Validation error', details: parsed.error.flatten() }, 422)
+  if (!Object.keys(parsed.data).length) return c.json({ error: 'No changes provided' }, 422)
+
+  const existing = await prisma.petitionUpdate.findUnique({ where: { id: c.req.param('updateId') } })
+  if (!existing || existing.petitionId !== c.req.param('id')) return c.json({ error: 'Not found' }, 404)
+  if (existing.deletedAt) return c.json({ error: 'Update is deleted' }, 409)
+
+  const update = await prisma.petitionUpdate.update({
+    where: { id: existing.id },
+    data: {
+      currentTitle: parsed.data.title,
+      currentContent: parsed.data.content,
+      updatedBy: user.userId,
+    },
+    include: {
+      creator: { select: { id: true, email: true } },
+      updater: { select: { id: true, email: true } },
+      deleter: { select: { id: true, email: true } },
+      versions: {
+        orderBy: { versionNumber: 'desc' },
+        include: { publisher: { select: { id: true, email: true } } },
+      },
+    },
+  })
+
+  await createAuditLog('petition.update.modified', 'PetitionUpdate', update.id, user.userId, {
+    petitionId: existing.petitionId,
+  })
+
+  return c.json(update)
+})
+
+adminRoutes.get('/petitions/:id/updates/:updateId/versions', async (c) => {
+  const existing = await prisma.petitionUpdate.findUnique({
+    where: { id: c.req.param('updateId') },
+    include: {
+      versions: {
+        orderBy: { versionNumber: 'desc' },
+        include: { publisher: { select: { id: true, email: true } } },
+      },
+      creator: { select: { id: true, email: true } },
+      updater: { select: { id: true, email: true } },
+      deleter: { select: { id: true, email: true } },
+    },
+  })
+  if (!existing || existing.petitionId !== c.req.param('id')) return c.json({ error: 'Not found' }, 404)
+  return c.json(existing)
+})
+
+adminRoutes.post('/petitions/:id/updates/:updateId/publish', async (c) => {
+  const user = c.get('user')
+  const body = await c.req.json().catch(() => null)
+  const parsed = petitionUpdatePublishSchema.safeParse(body)
+  if (!parsed.success) return c.json({ error: 'Validation error', details: parsed.error.flatten() }, 422)
+
+  const existing = await prisma.petitionUpdate.findUnique({
+    where: { id: c.req.param('updateId') },
+    include: {
+      versions: { orderBy: { versionNumber: 'desc' }, take: 1 },
+    },
+  })
+  if (!existing || existing.petitionId !== c.req.param('id')) return c.json({ error: 'Not found' }, 404)
+  if (existing.deletedAt) return c.json({ error: 'Update is deleted' }, 409)
+
+  const title = parsed.data.title ?? existing.currentTitle
+  const content = parsed.data.content ?? existing.currentContent
+  const publishedAt = new Date()
+  const versionNumber = (existing.versions[0]?.versionNumber ?? 0) + 1
+
+  const version = await prisma.$transaction(async (tx) => {
+    const createdVersion = await tx.petitionUpdateVersion.create({
+      data: {
+        petitionUpdateId: existing.id,
+        versionNumber,
+        title,
+        content,
+        publishedAt,
+        publishedBy: user.userId,
+      },
+      include: { publisher: { select: { id: true, email: true } } },
+    })
+
+    await tx.petitionUpdate.update({
+      where: { id: existing.id },
+      data: {
+        currentTitle: title,
+        currentContent: content,
+        lastPublishedAt: publishedAt,
+        updatedBy: user.userId,
+      },
+    })
+
+    return createdVersion
+  })
+
+  await createAuditLog('petition.update.published', 'PetitionUpdate', existing.id, user.userId, {
+    petitionId: existing.petitionId,
+    versionNumber,
+  })
+
+  return c.json(version, 201)
+})
+
+adminRoutes.delete('/petitions/:id/updates/:updateId', async (c) => {
+  const user = c.get('user')
+  const existing = await prisma.petitionUpdate.findUnique({ where: { id: c.req.param('updateId') } })
+  if (!existing || existing.petitionId !== c.req.param('id')) return c.json({ error: 'Not found' }, 404)
+
+  if (existing.deletedAt) {
+    return c.json({ message: 'Update already deleted' })
+  }
+
+  await prisma.petitionUpdate.update({
+    where: { id: existing.id },
+    data: {
+      deletedAt: new Date(),
+      deletedBy: user.userId,
+    },
+  })
+
+  await createAuditLog('petition.update.deleted', 'PetitionUpdate', existing.id, user.userId, {
+    petitionId: existing.petitionId,
+  })
+
+  return c.json({ message: 'Update deleted' })
+})
+
 // ── Signatures ────────────────────────────────────────────────────────────────
 
 adminRoutes.get('/petitions/:id/signatures', async (c) => {
@@ -299,16 +496,27 @@ adminRoutes.get('/backup', async (c) => {
   const user = c.get('user')
 
   const petitions = await prisma.petition.findMany({
-    include: { signatures: true },
+    include: {
+      signatures: true,
+      updates: {
+        include: {
+          versions: {
+            orderBy: { versionNumber: 'asc' },
+          },
+        },
+        orderBy: { createdAt: 'asc' },
+      },
+    },
     orderBy: { createdAt: 'asc' },
   })
 
   const backup = {
     version: 1,
     exportedAt: new Date().toISOString(),
-    petitions: petitions.map(({ signatures, ...petition }) => ({
+    petitions: petitions.map(({ signatures, updates, ...petition }) => ({
       ...petition,
       signatures,
+      updates,
     })),
   }
 
@@ -352,6 +560,24 @@ const backupPetitionSchema = z.object({
   endsAt: z.string().nullable().optional(),
   createdAt: z.string().optional(),
   signatures: z.array(backupSignatureSchema).optional().default([]),
+  updates: z.array(
+    z.object({
+      currentTitle: z.string(),
+      currentContent: z.string(),
+      lastPublishedAt: z.string().nullable().optional(),
+      deletedAt: z.string().nullable().optional(),
+      createdAt: z.string().optional(),
+      updatedAt: z.string().optional(),
+      versions: z.array(
+        z.object({
+          versionNumber: z.number().int().positive(),
+          title: z.string(),
+          content: z.string(),
+          publishedAt: z.string().optional(),
+        }),
+      ).optional().default([]),
+    }),
+  ).optional().default([]),
 })
 
 const restoreSchema = z.object({
@@ -372,10 +598,12 @@ adminRoutes.post('/restore', async (c) => {
 
   let restoredPetitions = 0
   let restoredSignatures = 0
+  let restoredUpdates = 0
+  let restoredUpdateVersions = 0
 
   await prisma.$transaction(async (tx) => {
     for (const petitionData of parsed.data.petitions) {
-      const { signatures, createdAt, startsAt, endsAt, ...petitionFields } = petitionData
+      const { signatures, updates, createdAt, startsAt, endsAt, ...petitionFields } = petitionData
 
       const petition = await tx.petition.upsert({
         where: { slug: petitionFields.slug },
@@ -450,15 +678,57 @@ adminRoutes.post('/restore', async (c) => {
         })
         restoredSignatures++
       }
+
+      await tx.petitionUpdate.deleteMany({ where: { petitionId: petition.id } })
+      for (const backupUpdate of updates) {
+        const { versions, createdAt: updateCreatedAt, updatedAt, deletedAt, lastPublishedAt, ...updateFields } = backupUpdate
+        const createdUpdate = await tx.petitionUpdate.create({
+          data: {
+            petitionId: petition.id,
+            currentTitle: updateFields.currentTitle,
+            currentContent: updateFields.currentContent,
+            lastPublishedAt: lastPublishedAt ? new Date(lastPublishedAt) : null,
+            deletedAt: deletedAt ? new Date(deletedAt) : null,
+            createdBy: user.userId,
+            updatedBy: user.userId,
+            deletedBy: deletedAt ? user.userId : null,
+            ...(updateCreatedAt ? { createdAt: new Date(updateCreatedAt) } : {}),
+            ...(updatedAt ? { updatedAt: new Date(updatedAt) } : {}),
+          },
+        })
+        restoredUpdates++
+
+        for (const version of versions) {
+          await tx.petitionUpdateVersion.create({
+            data: {
+              petitionUpdateId: createdUpdate.id,
+              versionNumber: version.versionNumber,
+              title: version.title,
+              content: version.content,
+              publishedAt: version.publishedAt ? new Date(version.publishedAt) : new Date(),
+              publishedBy: user.userId,
+            },
+          })
+          restoredUpdateVersions++
+        }
+      }
     }
   })
 
   await createAuditLog('backup.restored', 'System', 'restore', user.userId, {
     restoredPetitions,
     restoredSignatures,
+    restoredUpdates,
+    restoredUpdateVersions,
   })
 
-  return c.json({ message: 'Restore complete', restoredPetitions, restoredSignatures })
+  return c.json({
+    message: 'Restore complete',
+    restoredPetitions,
+    restoredSignatures,
+    restoredUpdates,
+    restoredUpdateVersions,
+  })
 })
 
 // ── Users ─────────────────────────────────────────────────────────────────────

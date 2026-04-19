@@ -87,6 +87,70 @@ publicRoutes.get('/petitions/:slug', async (c) => {
   return c.json({ ...petition, signatureCount: petition._count.signatures })
 })
 
+publicRoutes.get('/petitions/:slug/updates', async (c) => {
+  const includeVersionHistory = c.req.query('includeVersionHistory') === 'true'
+  const petition = await prisma.petition.findUnique({
+    where: { slug: c.req.param('slug') },
+    select: { id: true, status: true },
+  })
+
+  if (!petition || !['active', 'completed'].includes(petition.status)) {
+    return c.json({ error: 'Not found' }, 404)
+  }
+
+  const updates = await prisma.petitionUpdate.findMany({
+    where: {
+      petitionId: petition.id,
+      versions: { some: {} },
+    },
+    orderBy: [{ lastPublishedAt: 'desc' }, { createdAt: 'desc' }],
+    include: {
+      versions: {
+        orderBy: { versionNumber: 'desc' },
+        ...(includeVersionHistory ? {} : { take: 1 }),
+      },
+    },
+  })
+
+  return c.json({
+    updates: updates.map((update) => {
+      const latestVersion = update.versions[0] ?? null
+      return {
+        id: update.id,
+        isDeleted: !!update.deletedAt,
+        deletedAt: update.deletedAt,
+        createdAt: update.createdAt,
+        lastPublishedAt: update.lastPublishedAt,
+        latestVersion,
+        versions: includeVersionHistory ? update.versions : undefined,
+      }
+    }),
+  })
+})
+
+publicRoutes.get('/petitions/:slug/updates/:updateId/versions/:versionNumber', async (c) => {
+  const versionNumber = parseInt(c.req.param('versionNumber'))
+  if (!Number.isInteger(versionNumber) || versionNumber <= 0) {
+    return c.json({ error: 'Invalid version number' }, 422)
+  }
+
+  const version = await prisma.petitionUpdateVersion.findFirst({
+    where: {
+      petitionUpdateId: c.req.param('updateId'),
+      versionNumber,
+      petitionUpdate: {
+        petition: {
+          slug: c.req.param('slug'),
+          status: { in: ['active', 'completed'] },
+        },
+      },
+    },
+  })
+
+  if (!version) return c.json({ error: 'Not found' }, 404)
+  return c.json(version)
+})
+
 // ── Sign petition ─────────────────────────────────────────────────────────────
 
 const signSchema = z.object({

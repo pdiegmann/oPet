@@ -15,6 +15,7 @@ const AdminLoginPage = lazy(() => import('./pages/admin/LoginPage.js'))
 const AdminDashboardPage = lazy(() => import('./pages/admin/DashboardPage.js'))
 const AdminPetitionsPage = lazy(() => import('./pages/admin/PetitionsPage.js'))
 const AdminPetitionEditorPage = lazy(() => import('./pages/admin/PetitionEditorPage.js'))
+const AdminPetitionUpdatesPage = lazy(() => import('./pages/admin/PetitionUpdatesPage.js'))
 const AdminSignaturesPage = lazy(() => import('./pages/admin/SignaturesPage.js'))
 const AdminExportPage = lazy(() => import('./pages/admin/ExportPage.js'))
 const AdminBackupPage = lazy(() => import('./pages/admin/BackupPage.js'))
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="/petitions" component={AdminPetitionsPage} />
         <Route path="/petitions/new" component={AdminPetitionEditorPage} />
         <Route path="/petitions/:id/edit" component={AdminPetitionEditorPage} />
+        <Route path="/petitions/:id/updates" component={AdminPetitionUpdatesPage} />
         <Route path="/petitions/:id/signatures" component={AdminSignaturesPage} />
         <Route path="/export" component={AdminExportPage} />
         <Route path="/backup" component={AdminBackupPage} />

@@ -13,5 +13,8 @@
   "workspaces": [
     "backend",
     "frontend"
-  ]
+  ],
+  "dependencies": {
+    "tailwindcss-animate": "^1.0.7"
+  }
 }

@@ -63,6 +63,27 @@ export interface PublicSignature {
   createdAt: string
 }
 
+export interface PetitionUpdateVersion {
+  id: string
+  petitionUpdateId: string
+  versionNumber: number
+  title: string
+  content: string
+  publishedAt: string
+  publishedBy?: string
+  publisher?: { id: string; email: string }
+}
+
+export interface PublicPetitionUpdate {
+  id: string
+  isDeleted: boolean
+  deletedAt?: string
+  createdAt: string
+  lastPublishedAt?: string
+  latestVersion?: PetitionUpdateVersion
+  versions?: PetitionUpdateVersion[]
+}
+
 export interface SignPayload {
   fullName: string
   email: string
@@ -86,6 +107,17 @@ export const api = {
   },
 
   getPetition: (slug: string) => request<Petition>(`/api/petitions/${slug}`),
+
+  getPetitionUpdates: (slug: string, params?: { includeVersionHistory?: boolean }) => {
+    const q = new URLSearchParams()
+    if (params?.includeVersionHistory) q.set('includeVersionHistory', 'true')
+    return request<{ updates: PublicPetitionUpdate[] }>(`/api/petitions/${slug}/updates?${q}`)
+  },
+
+  getPetitionUpdateVersion: (slug: string, updateId: string, versionNumber: number) =>
+    request<PetitionUpdateVersion>(
+      `/api/petitions/${slug}/updates/${updateId}/versions/${versionNumber}`,
+    ),
 
   signPetition: (slug: string, payload: SignPayload) =>
     request<{ message: string; signatureId: string }>(`/api/petitions/${slug}/sign`, {
@@ -136,6 +168,21 @@ export interface Signature {
   withdrawnAt?: string
 }
 
+export interface AdminPetitionUpdate {
+  id: string
+  petitionId: string
+  currentTitle: string
+  currentContent: string
+  lastPublishedAt?: string
+  deletedAt?: string
+  createdAt: string
+  updatedAt: string
+  creator?: { id: string; email: string }
+  updater?: { id: string; email: string }
+  deleter?: { id: string; email: string }
+  versions: PetitionUpdateVersion[]
+}
+
 export interface DashboardStats {
   totalPetitions: number
   activePetitions: number
@@ -179,6 +226,58 @@ export const adminApi = {
 
   archivePetition: (token: string, id: string) =>
     request<{ message: string }>(`/api/admin/petitions/${id}`, { method: 'DELETE' }, token),
+
+  getPetitionUpdates: (token: string, petitionId: string) =>
+    request<{ updates: AdminPetitionUpdate[] }>(`/api/admin/petitions/${petitionId}/updates`, {}, token),
+
+  getPetitionUpdateVersions: (token: string, petitionId: string, updateId: string) =>
+    request<AdminPetitionUpdate>(
+      `/api/admin/petitions/${petitionId}/updates/${updateId}/versions`,
+      {},
+      token,
+    ),
+
+  createPetitionUpdate: (
+    token: string,
+    petitionId: string,
+    data: { title: string; content: string },
+  ) =>
+    request<AdminPetitionUpdate>(
+      `/api/admin/petitions/${petitionId}/updates`,
+      { method: 'POST', body: JSON.stringify(data) },
+      token,
+    ),
+
+  updatePetitionUpdate: (
+    token: string,
+    petitionId: string,
+    updateId: string,
+    data: { title?: string; content?: string },
+  ) =>
+    request<AdminPetitionUpdate>(
+      `/api/admin/petitions/${petitionId}/updates/${updateId}`,
+      { method: 'PUT', body: JSON.stringify(data) },
+      token,
+    ),
+
+  publishPetitionUpdate: (
+    token: string,
+    petitionId: string,
+    updateId: string,
+    data?: { title?: string; content?: string },
+  ) =>
+    request<PetitionUpdateVersion>(
+      `/api/admin/petitions/${petitionId}/updates/${updateId}/publish`,
+      { method: 'POST', body: JSON.stringify(data ?? {}) },
+      token,
+    ),
+
+  deletePetitionUpdate: (token: string, petitionId: string, updateId: string) =>
+    request<{ message: string }>(
+      `/api/admin/petitions/${petitionId}/updates/${updateId}`,
+      { method: 'DELETE' },
+      token,
+    ),
 
   getSignatures: (
     token: string,
