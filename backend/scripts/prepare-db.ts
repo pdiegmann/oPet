@@ -104,3 +104,6 @@ if (isPostgres) {
 }
 
 console.log('[prepare-db] Database ready.')
+
+console.log('[prepare-db] Seeding admin user…')
+run(`bun run prisma/seed.ts`, env)

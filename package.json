@@ -1,0 +1,17 @@
+{
+  "name": "opet",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "build": "bun run --filter '*' build",
+    "test": "bun run --filter '*' test"
+  },
+  "overrides": {
+    "@hono/node-server": ">=1.19.13"
+  }
+}
