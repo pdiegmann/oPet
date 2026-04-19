@@ -1,7 +1,11 @@
 import { createSignal, Show } from 'solid-js'
 import { useNavigate } from '@solidjs/router'
-import { adminApi } from '../../lib/api.js'
-import { login } from '../../stores/auth.js'
+import { adminApi } from '@/lib/api.js'
+import { login } from '@/stores/auth.js'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { TextField, TextFieldInput, TextFieldLabel } from '@/components/ui/text-field'
 
 export default function AdminLoginPage() {
   const navigate = useNavigate()
@@ -26,52 +30,46 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div style="min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--color-bg);">
-      <div class="card" style="width: 100%; max-width: 400px;">
-        <h1 style="font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; text-align: center;">
-          ✊ oPet Admin
-        </h1>
-        <p style="text-align: center; color: var(--color-text-muted); margin-bottom: 1.75rem; font-size: 0.9rem;">
-          Sign in to manage petitions
-        </p>
+    <div class="min-h-screen flex items-center justify-center bg-background">
+      <Card class="w-full max-w-sm">
+        <CardHeader class="text-center">
+          <CardTitle class="text-2xl">✊ oPet Admin</CardTitle>
+          <CardDescription>Sign in to manage petitions</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Show when={error()}>
+            <Alert variant="destructive" class="mb-4">
+              <AlertDescription>{error()}</AlertDescription>
+            </Alert>
+          </Show>
 
-        <Show when={error()}>
-          <div class="alert alert-error">{error()}</div>
-        </Show>
-
-        <form onSubmit={handleSubmit}>
-          <div class="form-group">
-            <label for="email">Email</label>
-            <input
-              id="email"
-              type="email"
-              required
-              autocomplete="email"
-              value={email()}
-              onInput={(e) => setEmail(e.currentTarget.value)}
-            />
-          </div>
-          <div class="form-group">
-            <label for="password">Password</label>
-            <input
-              id="password"
-              type="password"
-              required
-              autocomplete="current-password"
-              value={password()}
-              onInput={(e) => setPassword(e.currentTarget.value)}
-            />
-          </div>
-          <button
-            type="submit"
-            class="btn btn-primary"
-            disabled={loading()}
-            style="width: 100%; margin-top: 0.5rem;"
-          >
-            {loading() ? 'Signing in…' : 'Sign in'}
-          </button>
-        </form>
-      </div>
+          <form onSubmit={handleSubmit} class="space-y-4">
+            <TextField>
+              <TextFieldLabel>Email</TextFieldLabel>
+              <TextFieldInput
+                type="email"
+                required
+                autocomplete="email"
+                value={email()}
+                onInput={(e) => setEmail(e.currentTarget.value)}
+              />
+            </TextField>
+            <TextField>
+              <TextFieldLabel>Password</TextFieldLabel>
+              <TextFieldInput
+                type="password"
+                required
+                autocomplete="current-password"
+                value={password()}
+                onInput={(e) => setPassword(e.currentTarget.value)}
+              />
+            </TextField>
+            <Button type="submit" class="w-full mt-2" disabled={loading()}>
+              {loading() ? 'Signing in…' : 'Sign in'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }
