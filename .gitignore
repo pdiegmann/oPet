@@ -34,3 +34,5 @@ Thumbs.db
 
 # Docker volumes (if mounted locally)
 postgres_data/
+
+*.db
