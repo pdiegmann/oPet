@@ -1,0 +1,106 @@
+#!/usr/bin/env bun
+/**
+ * prepare-db.ts
+ *
+ * Detects the configured database type from DATABASE_URL and:
+ *  - Falls back to SQLite (file:<backend>/opet.db) when no PostgreSQL URL is set
+ *  - Generates the Prisma client for the correct provider
+ *  - Applies the database schema
+ *
+ * Run automatically via the `prestart` / `predev` npm hooks.
+ */
+
+import { execSync } from 'child_process'
+import { existsSync, readFileSync, appendFileSync, statSync } from 'fs'
+import { resolve } from 'path'
+
+const ROOT = resolve(import.meta.dir, '..')
+const ENV_FILE = resolve(ROOT, '..', '.env')
+// Store the SQLite database next to the backend root for a predictable location.
+const SQLITE_DB_PATH = resolve(ROOT, 'opet.db')
+const SQLITE_URL = `file:${SQLITE_DB_PATH}`
+const POSTGRES_SCHEMA = resolve(ROOT, 'prisma', 'schema.prisma')
+const SQLITE_SCHEMA = resolve(ROOT, 'prisma', 'schema.sqlite.prisma')
+
+function run(cmd: string, env: Record<string, string | undefined>): void {
+  execSync(cmd, { stdio: 'inherit', cwd: ROOT, env: { ...process.env, ...env } })
+}
+
+function isRegularFile(path: string): boolean {
+  try {
+    return statSync(path).isFile()
+  } catch {
+    return false
+  }
+}
+
+function envFileContains(key: string): boolean {
+  if (!existsSync(ENV_FILE)) return false
+  return readFileSync(ENV_FILE, 'utf-8').includes(`${key}=`)
+}
+
+function appendToEnvFile(line: string): void {
+  if (existsSync(ENV_FILE) && !isRegularFile(ENV_FILE)) {
+    console.warn(`[prepare-db] Skipping .env write: ${ENV_FILE} is not a regular file`)
+    return
+  }
+  try {
+    appendFileSync(ENV_FILE, `\n${line}\n`, 'utf-8')
+    console.log(`[prepare-db] Wrote '${line}' to ${ENV_FILE}`)
+  } catch (err) {
+    console.warn(`[prepare-db] Could not write to ${ENV_FILE}: ${err}`)
+  }
+}
+
+const rawUrl = (process.env.DATABASE_URL ?? '').trim()
+const isPostgres =
+  rawUrl.startsWith('postgresql://') || rawUrl.startsWith('postgres://')
+
+let schema: string
+let databaseUrl: string
+
+if (isPostgres) {
+  console.log('[prepare-db] PostgreSQL detected — using PostgreSQL database')
+  schema = POSTGRES_SCHEMA
+  databaseUrl = rawUrl
+} else {
+  databaseUrl = rawUrl || SQLITE_URL
+  console.log(
+    `[prepare-db] No PostgreSQL URL detected — falling back to SQLite (${databaseUrl})`
+  )
+  schema = SQLITE_SCHEMA
+
+  // Persist the default DATABASE_URL to .env so subsequent process starts
+  // (the server itself) pick it up without needing to re-run this script.
+  if (!rawUrl && !envFileContains('DATABASE_URL')) {
+    appendToEnvFile(`DATABASE_URL=${databaseUrl}`)
+  }
+}
+
+const env = { DATABASE_URL: databaseUrl }
+
+console.log('[prepare-db] Generating Prisma client…')
+run(`bunx prisma generate --schema="${schema}"`, env)
+
+console.log('[prepare-db] Applying database schema…')
+if (isPostgres) {
+  // Use migrate deploy for PostgreSQL to avoid accidental data loss.
+  // If no migration history exists yet, fall back to db push.
+  try {
+    run(`bunx prisma migrate deploy --schema="${schema}"`, env)
+  } catch (err) {
+    console.log(`[prepare-db] migrate deploy failed (${err}) — running db push for PostgreSQL`)
+    run(`bunx prisma db push --schema="${schema}"`, env)
+  }
+} else {
+  // SQLite is used for development/fallback; db push is appropriate here.
+  if (process.env.NODE_ENV === 'production') {
+    console.warn(
+      '[prepare-db] WARNING: Running SQLite in production is not recommended. ' +
+      'Set DATABASE_URL to a PostgreSQL connection string for production use.'
+    )
+  }
+  run(`bunx prisma db push --schema="${schema}" --accept-data-loss`, env)
+}
+
+console.log('[prepare-db] Database ready.')
