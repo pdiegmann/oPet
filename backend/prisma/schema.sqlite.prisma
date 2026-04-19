@@ -14,6 +14,7 @@ model User {
   role         String   @default("admin")
   createdAt    DateTime @default(now())
   petitions    Petition[]
+  petitionAccess PetitionUserAccess[]
   auditLogs    AuditLog[]
   exports      Export[]
   petitionUpdatesCreated          PetitionUpdate[]        @relation("PetitionUpdateCreatedBy")
@@ -41,6 +42,7 @@ model Petition {
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
   creator               User        @relation(fields: [createdBy], references: [id])
+  userAccess            PetitionUserAccess[]
   signatures            Signature[]
   exports               Export[]
   updates               PetitionUpdate[]
@@ -80,6 +82,17 @@ model PetitionUpdateVersion {
 
   @@unique([petitionUpdateId, versionNumber])
   @@index([petitionUpdateId, publishedAt])
+}
+
+model PetitionUserAccess {
+  id         String   @id @default(uuid())
+  userId     String
+  petitionId String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  petition   Petition @relation(fields: [petitionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, petitionId])
 }
 
 model Signature {

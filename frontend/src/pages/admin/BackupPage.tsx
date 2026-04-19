@@ -1,12 +1,20 @@
 import { createSignal, Show } from 'solid-js'
 import { adminApi } from '@/lib/api.js'
-import { getToken } from '@/stores/auth.js'
+import { getToken, isAdmin } from '@/stores/auth.js'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 
 export default function BackupPage() {
+  if (!isAdmin()) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>Only admins can create or restore backups.</AlertDescription>
+      </Alert>
+    )
+  }
+
   const token = getToken() ?? ''
   const [backupLoading, setBackupLoading] = createSignal(false)
   const [restoreLoading, setRestoreLoading] = createSignal(false)

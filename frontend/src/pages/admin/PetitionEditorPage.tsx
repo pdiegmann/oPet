@@ -1,7 +1,7 @@
 import { createResource, createSignal, Show } from 'solid-js'
 import { useNavigate, useParams } from '@solidjs/router'
 import { adminApi } from '@/lib/api.js'
-import { getToken } from '@/stores/auth.js'
+import { canWritePetitions, getToken, isAdmin } from '@/stores/auth.js'
 import QuillEditor from '@/components/QuillEditor.js'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -66,6 +66,22 @@ export default function PetitionEditorPage() {
   const [saving, setSaving] = createSignal(false)
   const [error, setError] = createSignal<string | null>(null)
   const [success, setSuccess] = createSignal<string | null>(null)
+
+  if (!canWritePetitions()) {
+    return (
+      <Alert variant="destructive" class="mb-4">
+        <AlertDescription>You do not have permission to edit petitions.</AlertDescription>
+      </Alert>
+    )
+  }
+
+  if (!isEdit && !isAdmin()) {
+    return (
+      <Alert variant="destructive" class="mb-4">
+        <AlertDescription>Only admins can create petitions.</AlertDescription>
+      </Alert>
+    )
+  }
 
   const [existing] = createResource(
     () => (isEdit ? params.id : undefined),

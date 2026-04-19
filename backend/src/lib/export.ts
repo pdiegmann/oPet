@@ -11,9 +11,11 @@ export interface ExportFilters {
 export async function exportSignatures(
   format: 'csv' | 'json',
   filters: ExportFilters,
+  allowedPetitionIds?: string[],
 ): Promise<{ data: string; contentType: string; filename: string }> {
   const where = {
     ...(filters.petitionId ? { petitionId: filters.petitionId } : {}),
+    ...(allowedPetitionIds ? { petitionId: { in: allowedPetitionIds } } : {}),
     ...(filters.verified !== undefined ? { verified: filters.verified } : {}),
     ...(filters.withdrawn !== undefined ? { withdrawn: filters.withdrawn } : {}),
     ...(filters.country ? { country: filters.country } : {}),

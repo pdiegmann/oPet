@@ -1,7 +1,7 @@
 import { createResource, createSignal, For, Show } from 'solid-js'
 import { useParams } from '@solidjs/router'
 import { adminApi, Signature } from '@/lib/api.js'
-import { getToken } from '@/stores/auth.js'
+import { canWritePetitions, getToken } from '@/stores/auth.js'
 import { StatusBadge } from '@/components/StatusBadge'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PaginationControls } from '@/components/PaginationControls'
@@ -153,7 +153,7 @@ export default function SignaturesPage() {
                             {new Date(sig.createdAt).toLocaleDateString()}
                           </TableCell>
                           <TableCell>
-                            <Show when={!sig.withdrawn}>
+                            <Show when={canWritePetitions() && !sig.withdrawn}>
                               <Button
                                 size="sm"
                                 variant="destructive"

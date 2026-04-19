@@ -1,7 +1,7 @@
 import { createResource, createSignal, For, Show } from 'solid-js'
 import { A } from '@solidjs/router'
 import { adminApi, AdminPetition } from '@/lib/api.js'
-import { getToken } from '@/stores/auth.js'
+import { canWritePetitions, getToken, isAdmin } from '@/stores/auth.js'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -53,7 +53,9 @@ export default function PetitionsPage() {
     <div>
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold">Petitions</h1>
-        <Button as={A} href="/admin/petitions/new">+ New petition</Button>
+        <Show when={isAdmin()}>
+          <Button as={A} href="/admin/petitions/new">+ New petition</Button>
+        </Show>
       </div>
 
       <Show when={archiveError()}>
@@ -132,16 +134,18 @@ export default function PetitionsPage() {
                         </TableCell>
                         <TableCell>
                           <div class="flex gap-1.5">
-                            <Button as={A} href={`/admin/petitions/${p.id}/edit`} variant="outline" size="sm">
-                              Edit
-                            </Button>
-                            <Button as={A} href={`/admin/petitions/${p.id}/updates`} variant="outline" size="sm">
-                              Updates
-                            </Button>
+                            <Show when={canWritePetitions()}>
+                              <Button as={A} href={`/admin/petitions/${p.id}/edit`} variant="outline" size="sm">
+                                Edit
+                              </Button>
+                              <Button as={A} href={`/admin/petitions/${p.id}/updates`} variant="outline" size="sm">
+                                Updates
+                              </Button>
+                            </Show>
                             <Button as={A} href={`/admin/petitions/${p.id}/signatures`} variant="outline" size="sm">
                               Signatures
                             </Button>
-                            <Show when={p.status !== 'archived'}>
+                            <Show when={canWritePetitions() && p.status !== 'archived'}>
                               <Button
                                 variant="destructive"
                                 size="sm"

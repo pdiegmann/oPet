@@ -190,9 +190,20 @@ export interface DashboardStats {
   verifiedSignatures: number
 }
 
+export type AdminUserRole = 'admin' | 'organizer' | 'reader'
+
+export interface AdminUserSummary {
+  id: string
+  email: string
+  role: AdminUserRole
+  createdAt: string
+  petitionIds: string[]
+  petitions: { id: string; title: string; slug: string }[]
+}
+
 export const adminApi = {
   login: (email: string, password: string) =>
-    request<{ token: string; user: { id: string; email: string; role: string } }>(
+    request<{ token: string; user: { id: string; email: string; role: AdminUserRole } }>(
       '/api/admin/login',
       { method: 'POST', body: JSON.stringify({ email, password }) },
     ),
@@ -204,9 +215,10 @@ export const adminApi = {
       token,
     ),
 
-  getPetitions: (token: string, params?: { page?: number; status?: string }) => {
+  getPetitions: (token: string, params?: { page?: number; limit?: number; status?: string }) => {
     const q = new URLSearchParams()
     if (params?.page) q.set('page', String(params.page))
+    if (params?.limit) q.set('limit', String(params.limit))
     if (params?.status) q.set('status', params.status)
     return request<{ petitions: AdminPetition[]; total: number; totalPages: number }>(
       `/api/admin/petitions?${q}`,
@@ -319,11 +331,25 @@ export const adminApi = {
   },
 
   getUsers: (token: string) =>
-    request<{ id: string; email: string; role: string; createdAt: string }[]>(
+    request<AdminUserSummary[]>(
       '/api/admin/users',
       {},
       token,
     ),
+
+  createUser: (
+    token: string,
+    data: { email: string; password: string; role: AdminUserRole; petitionIds?: string[] },
+  ) => request<AdminUserSummary>('/api/admin/users', { method: 'POST', body: JSON.stringify(data) }, token),
+
+  updateUser: (
+    token: string,
+    id: string,
+    data: { email?: string; password?: string; role?: AdminUserRole; petitionIds?: string[] },
+  ) => request<AdminUserSummary>(`/api/admin/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }, token),
+
+  deleteUser: (token: string, id: string) =>
+    request<{ message: string }>(`/api/admin/users/${id}`, { method: 'DELETE' }, token),
 
   backup: async (token: string) => {
     const res = await fetch(`${API_URL}/api/admin/backup`, {
