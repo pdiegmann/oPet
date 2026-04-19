@@ -17,7 +17,8 @@ ENV NODE_ENV=production
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/scripts ./scripts
 
 EXPOSE 3001
 
-CMD ["sh", "-c", "bunx prisma migrate deploy && bun dist/index.js"]
+CMD ["sh", "-c", "bun run scripts/prepare-db.ts && bun dist/index.js"]
