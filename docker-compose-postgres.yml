@@ -18,7 +18,7 @@ services:
       retries: 10
 
   backend:
-    build: ./backend
+    image: ghcr.io/pdiegmann/opet/backend:latest
     restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://${DB_USER:-opet}:${DB_PASSWORD:-opet}@db:5432/${DB_NAME:-opet}
@@ -38,7 +38,7 @@ services:
         condition: service_healthy
 
   frontend:
-    build: ./frontend
+    image: ghcr.io/pdiegmann/opet/frontend:latest
     restart: unless-stopped
     ports:
       - "3000:80"
