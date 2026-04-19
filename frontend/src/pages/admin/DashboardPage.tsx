@@ -1,119 +1,117 @@
 import { createResource, For, Show } from 'solid-js'
 import { A } from '@solidjs/router'
-import { adminApi, Signature, AdminPetition } from '../../lib/api.js'
-import { getToken } from '../../stores/auth.js'
+import { adminApi, Signature, AdminPetition } from '@/lib/api.js'
+import { getToken } from '@/stores/auth.js'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table'
+import { StatCard } from '@/components/StatCard'
+import { StatusBadge, type PetitionStatus } from '@/components/StatusBadge'
+
+type SigWithPetition = Signature & { petition?: { title: string; slug: string } }
 
 export default function DashboardPage() {
   const token = getToken() ?? ''
-
   const [data] = createResource(() => adminApi.getDashboard(token))
 
   return (
     <div>
-      <h1 class="page-title">Dashboard</h1>
+      <h1 class="text-2xl font-bold mb-6">Dashboard</h1>
 
       <Show when={data.loading}>
-        <p style="color: var(--color-text-muted);">Loading…</p>
+        <div class="grid grid-cols-4 gap-4 mb-8">
+          <For each={[1, 2, 3, 4]}>{() => <Skeleton class="h-28 rounded-lg" animate />}</For>
+        </div>
       </Show>
 
       <Show when={data.error}>
-        <div class="alert alert-error">Failed to load dashboard data.</div>
+        <Alert variant="destructive">
+          <AlertDescription>Failed to load dashboard data.</AlertDescription>
+        </Alert>
       </Show>
 
       <Show when={data()}>
         {(d) => (
           <>
-            {/* Stats */}
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
-              {(
-                [
-                  ['Total Petitions', d().stats.totalPetitions, '#2563eb'],
-                  ['Active Petitions', d().stats.activePetitions, '#16a34a'],
-                  ['Total Signatures', d().stats.totalSignatures, '#7c3aed'],
-                  ['Verified Signatures', d().stats.verifiedSignatures, '#d97706'],
-                ] as [string, number, string][]
-              ).map(([label, value, color]) => (
-                <div class="card" style="text-align: center;">
-                  <div style={`font-size: 2rem; font-weight: 800; color: ${color};`}>
-                    {value.toLocaleString()}
-                  </div>
-                  <div style="font-size: 0.85rem; color: var(--color-text-muted); margin-top: 0.25rem;">
-                    {label}
-                  </div>
-                </div>
-              ))}
+            <div class="grid grid-cols-4 gap-4 mb-8">
+              <StatCard title="Total Petitions" value={d().stats.totalPetitions} />
+              <StatCard title="Active Petitions" value={d().stats.activePetitions} />
+              <StatCard title="Total Signatures" value={d().stats.totalSignatures} />
+              <StatCard title="Verified Signatures" value={d().stats.verifiedSignatures} />
             </div>
 
-            {/* Recent petitions */}
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div class="grid grid-cols-2 gap-6">
               <div>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-                  <h2 style="font-size: 1.05rem; font-weight: 700;">Recent Petitions</h2>
-                  <A href="/admin/petitions" style="font-size: 0.85rem;">View all →</A>
+                <div class="flex justify-between items-center mb-3">
+                  <h2 class="font-bold">Recent Petitions</h2>
+                  <A href="/admin/petitions" class="text-sm text-primary hover:underline">
+                    View all →
+                  </A>
                 </div>
-                <div class="card" style="padding: 0;">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Title</th>
-                        <th>Status</th>
-                        <th>Signatures</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <For each={d().recentPetitions}>
-                        {(p: AdminPetition) => (
-                          <tr>
-                            <td>
-                              <A href={`/admin/petitions/${p.id}/signatures`} style="font-size: 0.9rem;">
-                                {p.title}
-                              </A>
-                            </td>
-                            <td><span class={`badge badge-${p.status}`}>{p.status}</span></td>
-                            <td>{p.signatureCount?.toLocaleString() ?? 0}</td>
-                          </tr>
-                        )}
-                      </For>
-                    </tbody>
-                  </table>
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Signatures</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <For each={d().recentPetitions}>
+                      {(p: AdminPetition) => (
+                        <TableRow>
+                          <TableCell>
+                            <A
+                              href={`/admin/petitions/${p.id}/signatures`}
+                              class="text-sm hover:underline"
+                            >
+                              {p.title}
+                            </A>
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={p.status as PetitionStatus} type="petition" />
+                          </TableCell>
+                          <TableCell class="text-sm">
+                            {(p.signatureCount ?? 0).toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </For>
+                  </TableBody>
+                </Table>
               </div>
 
               <div>
-                <h2 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 0.75rem;">
-                  Recent Signatures
-                </h2>
-                <div class="card" style="padding: 0;">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Name</th>
-                        <th>Petition</th>
-                        <th>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <For each={d().recentSignatures}>
-                        {(s: Signature & { petition?: { title: string; slug: string } }) => (
-                          <tr>
-                            <td style="font-size: 0.9rem;">{s.fullName}</td>
-                            <td style="font-size: 0.85rem; color: var(--color-text-muted);">
-                              {(s as unknown as { petition: { title: string } }).petition?.title ?? '—'}
-                            </td>
-                            <td>
-                              <Show
-                                when={s.verified}
-                                fallback={<span style="color: var(--color-warning); font-size: 0.8rem;">pending</span>}
-                              >
-                                <span style="color: var(--color-success); font-size: 0.8rem;">verified</span>
-                              </Show>
-                            </td>
-                          </tr>
-                        )}
-                      </For>
-                    </tbody>
-                  </table>
-                </div>
+                <h2 class="font-bold mb-3">Recent Signatures</h2>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Petition</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <For each={d().recentSignatures}>
+                      {(s: SigWithPetition) => (
+                        <TableRow>
+                          <TableCell class="text-sm font-medium">{s.fullName}</TableCell>
+                          <TableCell class="text-sm text-muted-foreground">
+                            {s.petition?.title ?? '—'}
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge
+                              status={s.verified ? 'verified' : 'pending'}
+                              type="signature"
+                            />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </For>
+                  </TableBody>
+                </Table>
               </div>
             </div>
           </>
