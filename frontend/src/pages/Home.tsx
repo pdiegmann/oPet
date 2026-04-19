@@ -95,9 +95,9 @@ export default function Home() {
                         </p>
                       </CardHeader>
                       <CardContent>
-                        <p class="text-sm text-muted-foreground line-clamp-3 mb-3">
-                          {petition.summary}
-                        </p>
+                        <Show when={petition.summary}>
+                          <div class="text-sm line-clamp-3 mb-3 text-muted-foreground" innerHTML={petition.summary} />
+                        </Show>
                         <Show when={petition.goalCount}>
                           <Progress
                             value={signaturePct(petition) ?? 0}

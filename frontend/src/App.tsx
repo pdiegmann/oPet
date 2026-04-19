@@ -11,6 +11,7 @@ const WithdrawPage = lazy(() => import('./pages/WithdrawPage.js'))
 const PrivacyPage = lazy(() => import('./pages/PrivacyPage.js'))
 const ImprintPage = lazy(() => import('./pages/ImprintPage.js'))
 
+const AdminIndexPage = lazy(() => import('./pages/admin/index.js'))
 const AdminLoginPage = lazy(() => import('./pages/admin/LoginPage.js'))
 const AdminDashboardPage = lazy(() => import('./pages/admin/DashboardPage.js'))
 const AdminPetitionsPage = lazy(() => import('./pages/admin/PetitionsPage.js'))
@@ -35,6 +36,7 @@ export default function App() {
       </Route>
       <Route path="/admin/login" component={AdminLoginPage} />
       <Route path="/admin" component={AdminLayout}>
+        <Route path="/" component={AdminIndexPage} />
         <Route path="/dashboard" component={AdminDashboardPage} />
         <Route path="/petitions" component={AdminPetitionsPage} />
         <Route path="/petitions/new" component={AdminPetitionEditorPage} />

@@ -33,10 +33,6 @@ export default function AdminLayout(props: AdminLayoutProps) {
   createEffect(() => {
     if (!isAuthenticated()) {
       navigate('/admin/login', { replace: true })
-      return
-    }
-    if (location.pathname === '/admin' || location.pathname === '/admin/') {
-      navigate('/admin/dashboard', { replace: true })
     }
   })
 
