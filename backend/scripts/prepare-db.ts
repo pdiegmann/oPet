@@ -21,6 +21,7 @@ const SQLITE_DB_PATH = resolve(ROOT, 'opet.db')
 const SQLITE_URL = `file:${SQLITE_DB_PATH}`
 const POSTGRES_SCHEMA = resolve(ROOT, 'prisma', 'schema.prisma')
 const SQLITE_SCHEMA = resolve(ROOT, 'prisma', 'schema.sqlite.prisma')
+const PRISMA_CONFIG = resolve(ROOT, 'prisma.config.ts')
 
 function run(cmd: string, env: Record<string, string | undefined>): void {
   execSync(cmd, { stdio: 'inherit', cwd: ROOT, env: { ...process.env, ...env } })
@@ -78,19 +79,22 @@ if (isPostgres) {
 }
 
 const env = { DATABASE_URL: databaseUrl }
+const quotedConfig = `"${PRISMA_CONFIG}"`
+const quotedSchema = `"${schema}"`
+const quotedUrl = `"${databaseUrl}"`
 
 console.log('[prepare-db] Generating Prisma client…')
-run(`bunx prisma generate --schema="${schema}"`, env)
+run(`bunx prisma generate --config=${quotedConfig} --schema=${quotedSchema}`, env)
 
 console.log('[prepare-db] Applying database schema…')
 if (isPostgres) {
   // Use migrate deploy for PostgreSQL to avoid accidental data loss.
   // If no migration history exists yet, fall back to db push.
   try {
-    run(`bunx prisma migrate deploy --schema="${schema}"`, env)
+    run(`bunx prisma migrate deploy --config=${quotedConfig} --schema=${quotedSchema}`, env)
   } catch (err) {
     console.log(`[prepare-db] migrate deploy failed (${err}) — running db push for PostgreSQL`)
-    run(`bunx prisma db push --schema="${schema}"`, env)
+    run(`bunx prisma db push --config=${quotedConfig} --schema=${quotedSchema} --url=${quotedUrl}`, env)
   }
 } else {
   // SQLite is used for development/fallback; db push is appropriate here.
@@ -100,7 +104,10 @@ if (isPostgres) {
       'Set DATABASE_URL to a PostgreSQL connection string for production use.'
     )
   }
-  run(`bunx prisma db push --schema="${schema}" --accept-data-loss`, env)
+  run(
+    `bunx prisma db push --config=${quotedConfig} --schema=${quotedSchema} --url=${quotedUrl} --accept-data-loss`,
+    env
+  )
 }
 
 console.log('[prepare-db] Database ready.')

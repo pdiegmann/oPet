@@ -13,7 +13,7 @@ FROM deps AS build
 COPY backend ./backend
 WORKDIR /repo/backend
 RUN bunx prisma generate
-RUN bun build src/index.ts --outdir dist --target bun
+RUN bun build src/index.ts --outdir dist --target bun --packages external
 
 FROM base AS runner
 WORKDIR /app

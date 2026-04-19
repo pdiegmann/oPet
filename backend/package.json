@@ -7,7 +7,7 @@
     "predev": "bun run scripts/prepare-db.ts",
     "start": "bun run src/index.ts",
     "prestart": "bun run scripts/prepare-db.ts",
-    "build": "bun build src/index.ts --outdir dist --target bun",
+    "build": "bun build src/index.ts --outdir dist --target bun --packages external",
     "db:setup": "bun run scripts/prepare-db.ts",
     "db:generate": "bunx prisma generate",
     "db:migrate": "bunx prisma migrate deploy",
