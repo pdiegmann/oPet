@@ -1,8 +1,19 @@
 import { createResource, createSignal, Show } from 'solid-js'
 import { useNavigate, useParams } from '@solidjs/router'
-import { adminApi } from '../../lib/api.js'
-import { getToken } from '../../stores/auth.js'
-import QuillEditor from '../../components/QuillEditor.js'
+import { adminApi } from '@/lib/api.js'
+import { getToken } from '@/stores/auth.js'
+import QuillEditor from '@/components/QuillEditor.js'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  TextField, TextFieldDescription, TextFieldInput, TextFieldLabel,
+} from '@/components/ui/text-field'
 
 interface PetitionFormData {
   slug: string
@@ -36,6 +47,15 @@ const emptyForm = (): PetitionFormData => ({
   endsAt: '',
 })
 
+type StatusOpt = { label: string; value: string }
+const STATUS_OPTIONS: StatusOpt[] = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'active', label: 'Active' },
+  { value: 'paused', label: 'Paused' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'archived', label: 'Archived' },
+]
+
 export default function PetitionEditorPage() {
   const token = getToken() ?? ''
   const navigate = useNavigate()
@@ -47,7 +67,6 @@ export default function PetitionEditorPage() {
   const [error, setError] = createSignal<string | null>(null)
   const [success, setSuccess] = createSignal<string | null>(null)
 
-  // Load existing petition for editing
   const [existing] = createResource(
     () => (isEdit ? params.id : undefined),
     async (id) => {
@@ -90,7 +109,6 @@ export default function PetitionEditorPage() {
     setError(null)
     setSuccess(null)
     setSaving(true)
-
     try {
       const f = form()
       const payload = {
@@ -108,7 +126,6 @@ export default function PetitionEditorPage() {
         startsAt: f.startsAt ? new Date(f.startsAt).toISOString() : undefined,
         endsAt: f.endsAt ? new Date(f.endsAt).toISOString() : undefined,
       }
-
       if (isEdit) {
         await adminApi.updatePetition(token, params.id!, payload)
         setSuccess('Petition updated successfully.')
@@ -124,200 +141,195 @@ export default function PetitionEditorPage() {
   }
 
   return (
-    <div style="max-width: 760px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h1 class="page-title" style="margin: 0;">
-          {isEdit ? 'Edit petition' : 'New petition'}
-        </h1>
+    <div class="max-w-3xl">
+      <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold">{isEdit ? 'Edit petition' : 'New petition'}</h1>
         <Show when={isEdit && existing()}>
-          <a
-            href={`/petition/${existing()?.slug}`}
-            target="_blank"
-            class="btn btn-secondary"
-            style="font-size: 0.85rem;"
-          >
+          <Button variant="outline" size="sm" as="a" href={`/petition/${existing()?.slug}`} target="_blank">
             View public page ↗
-          </a>
+          </Button>
         </Show>
       </div>
 
       <Show when={existing.loading}>
-        <p style="color: var(--color-text-muted);">Loading…</p>
+        <Skeleton class="h-64 w-full rounded-lg mb-4" animate />
       </Show>
 
       <Show when={error()}>
-        <div class="alert alert-error">{error()}</div>
+        <Alert variant="destructive" class="mb-4">
+          <AlertDescription>{error()}</AlertDescription>
+        </Alert>
       </Show>
       <Show when={success()}>
-        <div class="alert alert-success">{success()}</div>
+        <Alert class="mb-4">
+          <AlertDescription>{success()}</AlertDescription>
+        </Alert>
       </Show>
 
-      <form onSubmit={handleSubmit}>
-        <div class="card" style="margin-bottom: 1.25rem;">
-          <h2 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem;">Basic information</h2>
+      <form onSubmit={handleSubmit} class="space-y-4">
+        <Card>
+          <CardHeader><CardTitle>Basic information</CardTitle></CardHeader>
+          <CardContent class="space-y-4">
+            <TextField>
+              <TextFieldLabel>Title *</TextFieldLabel>
+              <TextFieldInput
+                type="text"
+                required
+                value={form().title}
+                onInput={(e) => {
+                  update('title', e.currentTarget.value)
+                  if (!isEdit) update('slug', autoSlug(e.currentTarget.value))
+                }}
+              />
+            </TextField>
 
-          <div class="form-group">
-            <label for="title">Title *</label>
-            <input
-              id="title"
-              type="text"
-              required
-              value={form().title}
-              onInput={(e) => {
-                update('title', e.currentTarget.value)
-                if (!isEdit) update('slug', autoSlug(e.currentTarget.value))
-              }}
-            />
-          </div>
+            <TextField>
+              <TextFieldLabel>Slug *</TextFieldLabel>
+              <TextFieldInput
+                type="text"
+                required
+                pattern="[a-z0-9-]+"
+                value={form().slug}
+                onInput={(e) => update('slug', e.currentTarget.value)}
+              />
+              <TextFieldDescription>URL: /petition/{form().slug || '…'}</TextFieldDescription>
+            </TextField>
 
-          <div class="form-group">
-            <label for="slug">Slug *</label>
-            <input
-              id="slug"
-              type="text"
-              required
-              pattern="[a-z0-9-]+"
-              value={form().slug}
-              onInput={(e) => update('slug', e.currentTarget.value)}
-            />
-            <small style="color: var(--color-text-muted);">
-              URL: /petition/{form().slug || '…'}
-            </small>
-          </div>
-
-          <div class="form-group">
-            <label for="summary">Summary * (shown in listing)</label>
-            <QuillEditor
-              id="summary"
-              value={form().summary}
-              onValueChange={(val) => update('summary', val)}
-              placeholder="Short summary shown in the petition listing…"
-              minHeight="5rem"
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="body">Body * (full petition text)</label>
-            <QuillEditor
-              id="body"
-              value={form().body}
-              onValueChange={(val) => update('body', val)}
-              placeholder="Full petition text…"
-              minHeight="14rem"
-            />
-          </div>
-        </div>
-
-        <div class="card" style="margin-bottom: 1.25rem;">
-          <h2 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem;">Recipient</h2>
-
-          <div class="form-group">
-            <label for="recipientName">Recipient name *</label>
-            <input
-              id="recipientName"
-              type="text"
-              required
-              value={form().recipientName}
-              onInput={(e) => update('recipientName', e.currentTarget.value)}
-            />
-          </div>
-
-          <div class="form-group">
-            <label for="recipientDescription">Recipient description</label>
-            <QuillEditor
-              id="recipientDescription"
-              value={form().recipientDescription}
-              onValueChange={(val) => update('recipientDescription', val)}
-              placeholder="Brief description of the petition recipient…"
-              minHeight="5rem"
-            />
-          </div>
-        </div>
-
-        <div class="card" style="margin-bottom: 1.25rem;">
-          <h2 style="font-size: 1rem; font-weight: 700; margin-bottom: 1rem;">Settings</h2>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-            <div class="form-group">
-              <label for="status">Status</label>
-              <select
-                id="status"
-                value={form().status}
-                onChange={(e) => update('status', e.currentTarget.value)}
-              >
-                <option value="draft">Draft</option>
-                <option value="active">Active</option>
-                <option value="paused">Paused</option>
-                <option value="completed">Completed</option>
-                <option value="archived">Archived</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="goalCount">Signature goal</label>
-              <input
-                id="goalCount"
-                type="number"
-                min="1"
-                value={form().goalCount}
-                onInput={(e) => update('goalCount', e.currentTarget.value)}
+            <div class="flex flex-col gap-1">
+              <label class="text-sm font-medium">Summary * (shown in listing)</label>
+              <QuillEditor
+                id="summary"
+                value={form().summary}
+                onValueChange={(val) => update('summary', val)}
+                placeholder="Short summary shown in the petition listing…"
+                minHeight="5rem"
               />
             </div>
-            <div class="form-group">
-              <label for="startsAt">Starts at</label>
-              <input
-                id="startsAt"
-                type="datetime-local"
-                value={form().startsAt}
-                onInput={(e) => update('startsAt', e.currentTarget.value)}
-              />
-            </div>
-            <div class="form-group">
-              <label for="endsAt">Ends at</label>
-              <input
-                id="endsAt"
-                type="datetime-local"
-                value={form().endsAt}
-                onInput={(e) => update('endsAt', e.currentTarget.value)}
-              />
-            </div>
-          </div>
 
-          <div style="display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.5rem;">
-            {(
-              [
-                ['requireVerification', 'Require email verification'],
-                ['allowPublicNames', 'Allow public names'],
-                ['allowComments', 'Allow comments'],
-              ] as [keyof PetitionFormData, string][]
-            ).map(([key, label]) => (
-              <div class="form-group" style="margin-bottom: 0;">
-                <label
-                  style="display: flex; align-items: center; gap: 0.5rem; font-weight: 400; cursor: pointer; margin-bottom: 0;"
+            <div class="flex flex-col gap-1">
+              <label class="text-sm font-medium">Body * (full petition text)</label>
+              <QuillEditor
+                id="body"
+                value={form().body}
+                onValueChange={(val) => update('body', val)}
+                placeholder="Full petition text…"
+                minHeight="14rem"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Recipient</CardTitle></CardHeader>
+          <CardContent class="space-y-4">
+            <TextField>
+              <TextFieldLabel>Recipient name *</TextFieldLabel>
+              <TextFieldInput
+                type="text"
+                required
+                value={form().recipientName}
+                onInput={(e) => update('recipientName', e.currentTarget.value)}
+              />
+            </TextField>
+
+            <div class="flex flex-col gap-1">
+              <label class="text-sm font-medium">Recipient description</label>
+              <QuillEditor
+                id="recipientDescription"
+                value={form().recipientDescription}
+                onValueChange={(val) => update('recipientDescription', val)}
+                placeholder="Brief description of the petition recipient…"
+                minHeight="5rem"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle>Settings</CardTitle></CardHeader>
+          <CardContent class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div class="flex flex-col gap-1">
+                <label class="text-sm font-medium">Status</label>
+                <Select
+                  options={STATUS_OPTIONS}
+                  optionValue="value"
+                  optionTextValue="label"
+                  value={STATUS_OPTIONS.find(o => o.value === form().status) ?? null}
+                  onChange={(opt) => update('status', opt?.value ?? 'draft')}
+                  itemComponent={(props) => (
+                    <SelectItem item={props.item}>{props.item.rawValue.label}</SelectItem>
+                  )}
                 >
-                  <input
-                    type="checkbox"
-                    style="width: 1rem; height: 1rem; flex-shrink: 0; accent-color: var(--color-primary); cursor: pointer;"
-                    checked={form()[key] as boolean}
-                    onChange={(e) => update(key, e.currentTarget.checked)}
-                  />
-                  {label}
-                </label>
+                  <SelectTrigger>
+                    <SelectValue<StatusOpt>>{(state) => state.selectedOption()?.label}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent />
+                </Select>
               </div>
-            ))}
-          </div>
-        </div>
 
-        <div style="display: flex; gap: 0.75rem;">
-          <button type="submit" class="btn btn-primary" disabled={saving()}>
+              <TextField>
+                <TextFieldLabel>Signature goal</TextFieldLabel>
+                <TextFieldInput
+                  type="number"
+                  min="1"
+                  value={form().goalCount}
+                  onInput={(e) => update('goalCount', e.currentTarget.value)}
+                />
+              </TextField>
+
+              <TextField>
+                <TextFieldLabel>Starts at</TextFieldLabel>
+                <TextFieldInput
+                  type="datetime-local"
+                  value={form().startsAt}
+                  onInput={(e) => update('startsAt', e.currentTarget.value)}
+                />
+              </TextField>
+
+              <TextField>
+                <TextFieldLabel>Ends at</TextFieldLabel>
+                <TextFieldInput
+                  type="datetime-local"
+                  value={form().endsAt}
+                  onInput={(e) => update('endsAt', e.currentTarget.value)}
+                />
+              </TextField>
+            </div>
+
+            <div class="flex flex-col gap-3 pt-1">
+              <label class="flex items-center gap-2 cursor-pointer text-sm">
+                <Checkbox
+                  checked={form().requireVerification}
+                  onChange={(checked) => update('requireVerification', checked)}
+                />
+                Require email verification
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer text-sm">
+                <Checkbox
+                  checked={form().allowPublicNames}
+                  onChange={(checked) => update('allowPublicNames', checked)}
+                />
+                Allow public names
+              </label>
+              <label class="flex items-center gap-2 cursor-pointer text-sm">
+                <Checkbox
+                  checked={form().allowComments}
+                  onChange={(checked) => update('allowComments', checked)}
+                />
+                Allow comments
+              </label>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div class="flex gap-3 pb-8">
+          <Button type="submit" disabled={saving()}>
             {saving() ? 'Saving…' : isEdit ? 'Save changes' : 'Create petition'}
-          </button>
-          <button
-            type="button"
-            class="btn btn-secondary"
-            onClick={() => navigate('/admin/petitions')}
-          >
+          </Button>
+          <Button type="button" variant="outline" onClick={() => navigate('/admin/petitions')}>
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </div>
