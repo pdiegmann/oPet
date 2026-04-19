@@ -1,0 +1,31 @@
+services:
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    container_name: backend
+    mount:
+      - opet_data:/var/lib/opet
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: file:/var/lib/opet/opet.db
+      PORT: 3001
+      NODE_ENV: production
+    ports:
+      - "3001:3001"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    container_name: frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  opet_data:
