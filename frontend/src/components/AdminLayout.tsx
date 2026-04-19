@@ -1,6 +1,7 @@
 import { JSX, Show, createEffect } from 'solid-js'
 import { A, useNavigate } from '@solidjs/router'
-import { isAuthenticated, logout } from '../stores/auth.js'
+import { isAuthenticated, logout } from '@/stores/auth.js'
+import { Button } from '@/components/ui/button'
 
 interface AdminLayoutProps {
   children?: JSX.Element
@@ -20,60 +21,50 @@ export default function AdminLayout(props: AdminLayoutProps) {
     navigate('/admin/login', { replace: true })
   }
 
+  const navItems: [string, string][] = [
+    ['/admin/dashboard', '📊 Dashboard'],
+    ['/admin/petitions', '📋 Petitions'],
+    ['/admin/export', '📤 Export'],
+    ['/admin/backup', '💾 Backup'],
+  ]
+
   return (
     <Show when={isAuthenticated()} fallback={null}>
-      <div style="min-height: 100vh; display: flex;">
-        {/* Sidebar */}
-        <aside
-          style="width: 220px; background: #1e293b; color: #cbd5e1; padding: 1.5rem 0;
-                 display: flex; flex-direction: column; flex-shrink: 0;"
-        >
-          <div style="padding: 0 1.25rem; margin-bottom: 2rem;">
-            <A href="/admin/dashboard" style="font-size: 1.25rem; font-weight: 700; color: #fff; text-decoration: none;">
+      <div class="min-h-screen flex">
+        <aside class="w-[220px] bg-slate-800 text-slate-300 flex flex-col shrink-0">
+          <div class="px-5 py-6">
+            <A href="/admin/dashboard" class="text-xl font-bold text-white no-underline">
               ✊ oPet Admin
             </A>
           </div>
 
-          <nav style="flex: 1; display: flex; flex-direction: column; gap: 0.25rem; padding: 0 0.75rem;">
-            {([
-              ['/admin/dashboard', '📊 Dashboard'],
-              ['/admin/petitions', '📋 Petitions'],
-              ['/admin/export', '📤 Export'],
-              ['/admin/backup', '💾 Backup'],
-            ] as [string, string][]).map(([href, label]) => (
+          <nav class="flex-1 flex flex-col gap-1 px-3">
+            {navItems.map(([href, label]) => (
               <A
                 href={href}
-                style="padding: 0.6rem 0.75rem; border-radius: 0.4rem; color: #cbd5e1;
-                       text-decoration: none; font-size: 0.95rem; transition: background 0.15s;"
-                activeClass="admin-nav-active"
+                class="px-3 py-2 rounded text-slate-300 no-underline text-sm transition-colors hover:bg-white/10"
+                activeClass="bg-white/10 text-white"
               >
                 {label}
               </A>
             ))}
           </nav>
 
-          <div style="padding: 0 1.25rem; margin-top: auto;">
-            <button
+          <div class="px-5 py-4 mt-auto">
+            <Button
+              variant="ghost"
+              class="w-full text-slate-300 hover:text-white hover:bg-white/10"
               onClick={handleLogout}
-              style="width: 100%; background: #334155; color: #cbd5e1; border: none;
-                     padding: 0.5rem; border-radius: 0.4rem; cursor: pointer; font-size: 0.9rem;"
             >
               Sign out
-            </button>
+            </Button>
           </div>
         </aside>
 
-        {/* Main content */}
-        <div style="flex: 1; display: flex; flex-direction: column; overflow: auto;">
-          <main style="padding: 2rem 1.5rem; flex: 1;">
-            {props.children}
-          </main>
+        <div class="flex-1 flex flex-col overflow-auto">
+          <main class="p-8 flex-1">{props.children}</main>
         </div>
       </div>
-
-      <style>{`
-        .admin-nav-active { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
-      `}</style>
     </Show>
   )
 }

@@ -7,34 +7,30 @@ interface LayoutProps {
 
 export default function Layout(props: LayoutProps) {
   return (
-    <div style="min-height: 100vh; display: flex; flex-direction: column;">
-      <header
-        style="background: var(--color-surface); border-bottom: 1px solid var(--color-border);
-               padding: 0.85rem 0; box-shadow: var(--shadow);"
-      >
-        <div class="container" style="display: flex; align-items: center; justify-content: space-between;">
-          <A href="/" style="font-size: 1.4rem; font-weight: 700; color: var(--color-primary); text-decoration: none;">
+    <div class="min-h-screen flex flex-col">
+      <header class="bg-card border-b shadow-sm">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+          <A href="/" class="text-2xl font-bold text-primary no-underline">
             ✊ oPet
           </A>
-          <nav style="display: flex; gap: 1.5rem; font-size: 0.95rem;">
-            <A href="/" activeClass="active-link">Petitions</A>
-            <A href="/privacy">Privacy</A>
-            <A href="/imprint">Imprint</A>
+          <nav class="flex gap-4 text-sm">
+            <A href="/" class="hover:text-primary transition-colors" activeClass="text-primary font-medium">Petitions</A>
+            <A href="/privacy" class="hover:text-primary transition-colors">Privacy</A>
+            <A href="/imprint" class="hover:text-primary transition-colors">Imprint</A>
           </nav>
         </div>
       </header>
 
-      <main class="container" style="padding-top: 2rem; padding-bottom: 3rem; flex: 1;">
+      <main class="container mx-auto px-4 pt-8 pb-12 flex-1">
         {props.children}
       </main>
 
-      <footer
-        style="background: var(--color-surface); border-top: 1px solid var(--color-border);
-               padding: 1.2rem 0; text-align: center; font-size: 0.85rem; color: var(--color-text-muted);"
-      >
-        <div class="container">
+      <footer class="bg-card border-t py-5 text-center text-sm text-muted-foreground">
+        <div class="container mx-auto px-4">
           &copy; {new Date().getFullYear()} oPet &mdash; Open Petition Platform &mdash;{' '}
-          <A href="/privacy">Privacy</A> &bull; <A href="/imprint">Imprint</A>
+          <A href="/privacy" class="hover:underline">Privacy</A>
+          {' '}&bull;{' '}
+          <A href="/imprint" class="hover:underline">Imprint</A>
         </div>
       </footer>
     </div>
