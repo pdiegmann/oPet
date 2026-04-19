@@ -7,7 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TextField, TextFieldInput } from '@/components/ui/text-field'
-import { StatusBadge } from '@/components/StatusBadge'
+import { StatusBadge, type PetitionStatus } from '@/components/StatusBadge'
 import { PaginationControls } from '@/components/PaginationControls'
 
 export default function Home() {
@@ -106,7 +106,7 @@ export default function Home() {
                         </Show>
                       </CardContent>
                       <CardFooter class="flex items-center gap-2 pt-0">
-                        <StatusBadge status={petition.status as 'active'} type="petition" />
+                        <StatusBadge status={petition.status as PetitionStatus} type="petition" />
                         <span class="text-xs text-muted-foreground ml-auto">
                           {petition.goalCount
                             ? `${petition.signatureCount} / ${petition.goalCount}`

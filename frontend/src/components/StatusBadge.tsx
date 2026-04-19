@@ -17,6 +17,8 @@ const sigVariant: Record<SigStatus, 'warning' | 'success' | 'error'> = {
   withdrawn: 'error',
 }
 
+export type { PetitionStatus, SigStatus }
+
 interface StatusBadgeProps {
   status: PetitionStatus | SigStatus
   type?: 'petition' | 'signature'
