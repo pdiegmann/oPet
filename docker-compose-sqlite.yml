@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     container_name: backend
     networks:
-      - homelab_network
+      - opet_network
     volumes:
       - opet_data:/var/lib/opet
     env_file:
@@ -16,7 +16,7 @@ services:
       NODE_ENV: production
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=homelab_network"
+      - "traefik.docker.network=opet_network"
       - "com.centurylinklabs.watchtower.enable=false"
       - "traefik.http.routers.opet-backend.rule=Host(`opet.hnnl.eu`) && PathPrefix(`/api`)"
       - "traefik.http.routers.opet-backend.entrypoints=websecure"
@@ -29,12 +29,12 @@ services:
     restart: unless-stopped
     container_name: frontend
     networks:
-      - homelab_network
+      - opet_network
     depends_on:
       - backend
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=homelab_network"
+      - "traefik.docker.network=opet_network"
       - "com.centurylinklabs.watchtower.enable=false"
       - "traefik.http.routers.opet-frontend.rule=Host(`opet.hnnl.eu`) && !PathPrefix(`/api`)"
       - "traefik.http.routers.opet-frontend.entrypoints=websecure"
@@ -46,5 +46,5 @@ volumes:
   opet_data:
 
 networks:
-  homelab_network:
-    external: true
+  opet_network:
+    driver: bridge
