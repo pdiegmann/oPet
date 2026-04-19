@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+**/node_modules
+**/dist
+**/.DS_Store
+backend/opet.db
+.env
+.env.*
+!.env.example

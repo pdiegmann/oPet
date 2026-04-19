@@ -1,12 +1,15 @@
 FROM oven/bun:1 AS base
-WORKDIR /app
+WORKDIR /repo
 
 FROM base AS deps
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+COPY backend/package.json ./backend/package.json
+COPY frontend/package.json ./frontend/package.json
+RUN bun install --frozen-lockfile --filter opet-backend
 
 FROM deps AS build
-COPY . .
+COPY backend ./backend
+WORKDIR /repo/backend
 RUN bunx prisma generate
 RUN bun build src/index.ts --outdir dist --target bun
 
@@ -14,10 +17,10 @@ FROM base AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/scripts ./scripts
+COPY --from=build /repo/node_modules ./node_modules
+COPY --from=build /repo/backend/dist ./dist
+COPY --from=build /repo/backend/prisma ./prisma
+COPY --from=build /repo/backend/scripts ./scripts
 
 EXPOSE 3001
 
