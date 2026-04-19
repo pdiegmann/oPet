@@ -1,33 +1,53 @@
 import { createResource, createSignal, For, Show } from 'solid-js'
 import { useParams } from '@solidjs/router'
-import { adminApi, Signature } from '../../lib/api.js'
-import { getToken } from '../../stores/auth.js'
+import { adminApi, Signature } from '@/lib/api.js'
+import { getToken } from '@/stores/auth.js'
+import { StatusBadge } from '@/components/StatusBadge'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { PaginationControls } from '@/components/PaginationControls'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
+
+const VERIFIED_OPTIONS = [
+  { value: '', label: 'All (verified & unverified)' },
+  { value: 'true', label: 'Verified only' },
+  { value: 'false', label: 'Unverified only' },
+]
+
+const WITHDRAWN_OPTIONS = [
+  { value: 'false', label: 'Active only' },
+  { value: 'true', label: 'Withdrawn only' },
+  { value: '', label: 'All' },
+]
+
+type FilterOption = { value: string; label: string }
 
 export default function SignaturesPage() {
   const token = getToken() ?? ''
   const params = useParams<{ id: string }>()
 
   const [page, setPage] = createSignal(1)
-  const [verifiedFilter, setVerifiedFilter] = createSignal('')
-  const [withdrawnFilter, setWithdrawnFilter] = createSignal('false')
+  const [verifiedFilter, setVerifiedFilter] = createSignal<FilterOption>(VERIFIED_OPTIONS[0])
+  const [withdrawnFilter, setWithdrawnFilter] = createSignal<FilterOption>(WITHDRAWN_OPTIONS[0])
+  const [removeTarget, setRemoveTarget] = createSignal<Signature | null>(null)
 
   const [data, { refetch }] = createResource(
     () => ({
       page: page(),
-      verified: verifiedFilter() !== '' ? verifiedFilter() === 'true' : undefined,
-      withdrawn: withdrawnFilter() !== '' ? withdrawnFilter() === 'true' : undefined,
+      verified: verifiedFilter().value !== '' ? verifiedFilter().value === 'true' : undefined,
+      withdrawn: withdrawnFilter().value !== '' ? withdrawnFilter().value === 'true' : undefined,
     }),
     (filters) => adminApi.getSignatures(token, params.id, filters),
   )
 
-  async function handleRemove(sig: Signature) {
-    if (!confirm(`Remove signature from ${sig.fullName}?`)) return
-    try {
-      await adminApi.removeSignature(token, sig.id)
-      refetch()
-    } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Failed to remove signature')
-    }
+  function deriveSigStatus(sig: Signature): 'withdrawn' | 'verified' | 'pending' {
+    if (sig.withdrawn) return 'withdrawn'
+    if (sig.verified) return 'verified'
+    return 'pending'
   }
 
   return (
@@ -35,135 +55,140 @@ export default function SignaturesPage() {
       <h1 class="page-title">Signatures</h1>
 
       {/* Filters */}
-      <div style="display: flex; gap: 0.75rem; margin-bottom: 1.25rem;">
-        <select
-          style="width: auto;"
-          value={verifiedFilter()}
-          onChange={(e) => { setVerifiedFilter(e.currentTarget.value); setPage(1) }}
+      <div class="flex gap-3 mb-5">
+        <Select<FilterOption>
+          options={VERIFIED_OPTIONS}
+          optionValue="value"
+          optionTextValue="label"
+          value={VERIFIED_OPTIONS.find((o) => o.value === verifiedFilter().value) ?? VERIFIED_OPTIONS[0]}
+          onChange={(opt) => { if (opt) { setVerifiedFilter(opt); setPage(1) } }}
+          itemComponent={(p) => <SelectItem item={p.item}>{p.item.rawValue.label}</SelectItem>}
         >
-          <option value="">All (verified &amp; unverified)</option>
-          <option value="true">Verified only</option>
-          <option value="false">Unverified only</option>
-        </select>
-        <select
-          style="width: auto;"
-          value={withdrawnFilter()}
-          onChange={(e) => { setWithdrawnFilter(e.currentTarget.value); setPage(1) }}
+          <SelectTrigger>
+            <SelectValue<FilterOption>>{(s) => s.selectedOption().label}</SelectValue>
+          </SelectTrigger>
+          <SelectContent />
+        </Select>
+
+        <Select<FilterOption>
+          options={WITHDRAWN_OPTIONS}
+          optionValue="value"
+          optionTextValue="label"
+          value={WITHDRAWN_OPTIONS.find((o) => o.value === withdrawnFilter().value) ?? WITHDRAWN_OPTIONS[0]}
+          onChange={(opt) => { if (opt) { setWithdrawnFilter(opt); setPage(1) } }}
+          itemComponent={(p) => <SelectItem item={p.item}>{p.item.rawValue.label}</SelectItem>}
         >
-          <option value="false">Active only</option>
-          <option value="true">Withdrawn only</option>
-          <option value="">All</option>
-        </select>
+          <SelectTrigger>
+            <SelectValue<FilterOption>>{(s) => s.selectedOption().label}</SelectValue>
+          </SelectTrigger>
+          <SelectContent />
+        </Select>
       </div>
 
       <Show when={data.loading}>
-        <p style="color: var(--color-text-muted);">Loading…</p>
+        <div class="space-y-2 mb-4">
+          <Skeleton class="h-8 w-full rounded" animate />
+          <Skeleton class="h-8 w-full rounded" animate />
+          <Skeleton class="h-8 w-full rounded" animate />
+        </div>
       </Show>
+
       <Show when={data.error}>
-        <div class="alert alert-error">Failed to load signatures.</div>
+        <Alert variant="destructive">
+          <AlertDescription>Failed to load signatures.</AlertDescription>
+        </Alert>
       </Show>
 
       <Show when={data()}>
         {(d) => (
           <>
-            <div style="margin-bottom: 0.75rem; font-size: 0.9rem; color: var(--color-text-muted);">
+            <p class="text-sm text-muted-foreground mb-3">
               {d().total.toLocaleString()} signature(s) found
-            </div>
+            </p>
 
-            <div class="card" style="padding: 0; overflow: hidden;">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Location</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+            <Card class="p-0 overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   <Show
                     when={d().signatures.length > 0}
                     fallback={
-                      <tr>
-                        <td colspan="6" style="text-align: center; color: var(--color-text-muted);">
+                      <TableRow>
+                        <TableCell colspan={6} class="text-center text-muted-foreground">
                           No signatures found
-                        </td>
-                      </tr>
+                        </TableCell>
+                      </TableRow>
                     }
                   >
                     <For each={d().signatures}>
                       {(sig: Signature) => (
-                        <tr>
-                          <td style="font-weight: 500;">{sig.fullName}</td>
-                          <td style="font-size: 0.85rem;">{sig.email}</td>
-                          <td style="font-size: 0.85rem; color: var(--color-text-muted);">
+                        <TableRow>
+                          <TableCell class="font-medium">{sig.fullName}</TableCell>
+                          <TableCell class="text-sm">{sig.email}</TableCell>
+                          <TableCell class="text-sm text-muted-foreground">
                             {[sig.city, sig.country].filter(Boolean).join(', ') || '—'}
-                          </td>
-                          <td>
-                            <Show
-                              when={sig.withdrawn}
-                              fallback={
-                                <Show
-                                  when={sig.verified}
-                                  fallback={
-                                    <span style="color: var(--color-warning); font-size: 0.8rem;">⏳ pending</span>
-                                  }
-                                >
-                                  <span style="color: var(--color-success); font-size: 0.8rem;">✓ verified</span>
-                                </Show>
-                              }
-                            >
-                              <span style="color: var(--color-danger); font-size: 0.8rem;">✕ withdrawn</span>
-                            </Show>
-                          </td>
-                          <td style="font-size: 0.8rem; color: var(--color-text-muted);">
+                          </TableCell>
+                          <TableCell>
+                            <StatusBadge status={deriveSigStatus(sig)} type="signature" />
+                          </TableCell>
+                          <TableCell class="text-sm text-muted-foreground">
                             {new Date(sig.createdAt).toLocaleDateString()}
-                          </td>
-                          <td>
+                          </TableCell>
+                          <TableCell>
                             <Show when={!sig.withdrawn}>
-                              <button
-                                class="btn btn-danger"
-                                style="font-size: 0.75rem; padding: 0.25rem 0.6rem;"
-                                onClick={() => handleRemove(sig)}
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => setRemoveTarget(sig)}
                               >
                                 Remove
-                              </button>
+                              </Button>
                             </Show>
-                          </td>
-                        </tr>
+                          </TableCell>
+                        </TableRow>
                       )}
                     </For>
                   </Show>
-                </tbody>
-              </table>
-            </div>
+                </TableBody>
+              </Table>
+            </Card>
 
-            <Show when={d().totalPages > 1}>
-              <div class="pagination">
-                <button
-                  class="btn btn-secondary"
-                  disabled={page() <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  ← Prev
-                </button>
-                <span style="font-size: 0.9rem; color: var(--color-text-muted);">
-                  Page {page()} of {d().totalPages}
-                </span>
-                <button
-                  class="btn btn-secondary"
-                  disabled={page() >= d().totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next →
-                </button>
-              </div>
-            </Show>
+            <PaginationControls
+              page={page()}
+              totalPages={d().totalPages}
+              onPageChange={setPage}
+            />
           </>
         )}
       </Show>
+
+      <ConfirmDialog
+        open={removeTarget() !== null}
+        onOpenChange={(o) => { if (!o) setRemoveTarget(null) }}
+        title="Remove signature"
+        description={`Remove signature from ${removeTarget()?.fullName ?? ''}?`}
+        confirmLabel="Remove"
+        variant="destructive"
+        onConfirm={async () => {
+          const sig = removeTarget()
+          if (!sig) return
+          try {
+            await adminApi.removeSignature(token, sig.id)
+            refetch()
+          } catch (_e: unknown) {
+            // silently ignore — could show toast in future
+          }
+        }}
+      />
     </div>
   )
 }
