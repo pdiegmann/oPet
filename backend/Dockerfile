@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 FROM oven/bun:1 AS base
 WORKDIR /repo
 
@@ -5,7 +6,8 @@ FROM base AS deps
 COPY package.json bun.lock ./
 COPY backend/package.json ./backend/package.json
 COPY frontend/package.json ./frontend/package.json
-RUN bun install --frozen-lockfile --filter opet-backend
+RUN --mount=type=cache,target=/root/.bun/install/cache \
+  bun install --frozen-lockfile --filter opet-backend
 
 FROM deps AS build
 COPY backend ./backend
@@ -20,6 +22,7 @@ ENV NODE_ENV=production
 COPY --from=build /repo/node_modules ./node_modules
 COPY --from=build /repo/backend/dist ./dist
 COPY --from=build /repo/backend/prisma ./prisma
+COPY --from=build /repo/backend/prisma.config.ts ./prisma.config.ts
 COPY --from=build /repo/backend/scripts ./scripts
 
 EXPOSE 3001

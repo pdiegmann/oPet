@@ -1,8 +1,10 @@
+# syntax=docker/dockerfile:1.7
 FROM node:20-alpine AS build
 WORKDIR /app
 
 COPY frontend/package.json ./package.json
-RUN npm install --no-audit --no-fund
+RUN --mount=type=cache,target=/root/.npm \
+  npm install --no-audit --no-fund
 
 COPY frontend .
 RUN npm run build

@@ -15,7 +15,35 @@ permissions:
   packages: write
 
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            backend:
+              - '.dockerignore'
+              - 'package.json'
+              - 'bun.lock'
+              - 'backend/**'
+              - 'frontend/package.json'
+            frontend:
+              - '.dockerignore'
+              - 'frontend/**'
+
   backend-image:
+    needs: changes
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -55,13 +83,15 @@ jobs:
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.year }}
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.year_month }}
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.date }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=backend-image
+          cache-to: type=gha,scope=backend-image,mode=max
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
 
   frontend-image:
+    needs: changes
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -101,8 +131,8 @@ jobs:
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.year }}
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.year_month }}
             ${{ steps.meta.outputs.image }}:${{ steps.meta.outputs.date }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=frontend-image
+          cache-to: type=gha,scope=frontend-image,mode=max
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ github.sha }}
