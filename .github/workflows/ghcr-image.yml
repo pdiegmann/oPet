@@ -35,10 +35,12 @@ jobs:
               - '.dockerignore'
               - 'package.json'
               - 'bun.lock'
+              - 'i18n/**'
               - 'backend/**'
               - 'frontend/package.json'
             frontend:
               - '.dockerignore'
+              - 'i18n/**'
               - 'frontend/**'
 
   backend-image:

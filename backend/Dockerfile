@@ -11,6 +11,7 @@ RUN --mount=type=cache,target=/root/.bun/install/cache \
 
 FROM deps AS build
 COPY backend ./backend
+COPY i18n ./i18n
 WORKDIR /repo/backend
 RUN bunx prisma generate
 RUN bun build src/index.ts --outdir dist --target bun --packages external
