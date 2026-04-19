@@ -5,6 +5,7 @@ import { rateLimit } from '../middleware/rateLimit.js'
 import { generateToken, hashToken } from '../lib/tokens.js'
 import { sendVerificationEmail, sendWithdrawalEmail } from '../lib/email.js'
 import { createAuditLog } from '../lib/audit.js'
+import { getLocale, t } from '../lib/i18n.js'
 
 export const publicRoutes = new Hono()
 
@@ -81,7 +82,7 @@ publicRoutes.get('/petitions/:slug', async (c) => {
   })
 
   if (!petition || !['active', 'completed'].includes(petition.status)) {
-    return c.json({ error: 'Not found' }, 404)
+    return c.json({ error: t(c, 'api.not_found') }, 404)
   }
 
   return c.json({ ...petition, signatureCount: petition._count.signatures })
@@ -95,7 +96,7 @@ publicRoutes.get('/petitions/:slug/updates', async (c) => {
   })
 
   if (!petition || !['active', 'completed'].includes(petition.status)) {
-    return c.json({ error: 'Not found' }, 404)
+    return c.json({ error: t(c, 'api.not_found') }, 404)
   }
 
   const updates = await prisma.petitionUpdate.findMany({
@@ -131,7 +132,7 @@ publicRoutes.get('/petitions/:slug/updates', async (c) => {
 publicRoutes.get('/petitions/:slug/updates/:updateId/versions/:versionNumber', async (c) => {
   const versionNumber = parseInt(c.req.param('versionNumber'))
   if (!Number.isInteger(versionNumber) || versionNumber <= 0) {
-    return c.json({ error: 'Invalid version number' }, 422)
+    return c.json({ error: t(c, 'api.invalid_version_number') }, 422)
   }
 
   const version = await prisma.petitionUpdateVersion.findFirst({
@@ -147,7 +148,7 @@ publicRoutes.get('/petitions/:slug/updates/:updateId/versions/:versionNumber', a
     },
   })
 
-  if (!version) return c.json({ error: 'Not found' }, 404)
+  if (!version) return c.json({ error: t(c, 'api.not_found') }, 404)
   return c.json(version)
 })
 
@@ -168,13 +169,13 @@ publicRoutes.post('/petitions/:slug/sign', rateLimit(10, 60_000), async (c) => {
   const petition = await prisma.petition.findUnique({ where: { slug: c.req.param('slug') } })
 
   if (!petition || petition.status !== 'active') {
-    return c.json({ error: 'Petition not found or not active' }, 404)
+    return c.json({ error: t(c, 'api.petition_not_found_or_not_active') }, 404)
   }
 
   const body = await c.req.json().catch(() => null)
   const parsed = signSchema.safeParse(body)
   if (!parsed.success) {
-    return c.json({ error: 'Validation error', details: parsed.error.flatten() }, 422)
+    return c.json({ error: t(c, 'api.validation_error'), details: parsed.error.flatten() }, 422)
   }
 
   const data = parsed.data
@@ -210,13 +211,13 @@ publicRoutes.post('/petitions/:slug/sign', rateLimit(10, 60_000), async (c) => {
         await prisma.verificationToken.create({
           data: { signatureId: existing.id, tokenHash: hash, expiresAt, type: 'verify' },
         })
-        await sendVerificationEmail(data.email, data.fullName, petition.title, token)
+        await sendVerificationEmail(data.email, data.fullName, petition.title, token, getLocale(c))
       }
 
-      return c.json({ message: 'Re-signed. Please verify your email.' })
+      return c.json({ message: t(c, 'api.re_signed_please_verify_your_email') })
     }
 
-    return c.json({ error: 'You have already signed this petition' }, 409)
+    return c.json({ error: t(c, 'api.you_have_already_signed_this_petition') }, 409)
   }
 
   const signature = await prisma.signature.create({
@@ -241,7 +242,7 @@ publicRoutes.post('/petitions/:slug/sign', rateLimit(10, 60_000), async (c) => {
     await prisma.verificationToken.create({
       data: { signatureId: signature.id, tokenHash: hash, expiresAt, type: 'verify' },
     })
-    await sendVerificationEmail(data.email, data.fullName, petition.title, token)
+    await sendVerificationEmail(data.email, data.fullName, petition.title, token, getLocale(c))
   }
 
   await createAuditLog('signature.created', 'Signature', signature.id, undefined, {
@@ -251,8 +252,8 @@ publicRoutes.post('/petitions/:slug/sign', rateLimit(10, 60_000), async (c) => {
   return c.json(
     {
       message: petition.requireVerification
-        ? 'Signed successfully. Please check your email to verify.'
-        : 'Signed successfully.',
+        ? t(c, 'api.signed_successfully_please_check_your_email_to_verify')
+        : t(c, 'api.signed_successfully'),
       signatureId: signature.id,
     },
     201,
@@ -270,10 +271,10 @@ publicRoutes.get('/verify/:token', async (c) => {
     include: { signature: { include: { petition: true } } },
   })
 
-  if (!tokenRecord) return c.json({ error: 'Invalid token' }, 400)
-  if (tokenRecord.usedAt) return c.json({ error: 'Token already used' }, 400)
-  if (tokenRecord.expiresAt < new Date()) return c.json({ error: 'Token expired' }, 400)
-  if (tokenRecord.type !== 'verify') return c.json({ error: 'Wrong token type' }, 400)
+  if (!tokenRecord) return c.json({ error: t(c, 'api.invalid_token') }, 400)
+  if (tokenRecord.usedAt) return c.json({ error: t(c, 'api.token_already_used') }, 400)
+  if (tokenRecord.expiresAt < new Date()) return c.json({ error: t(c, 'api.token_expired') }, 400)
+  if (tokenRecord.type !== 'verify') return c.json({ error: t(c, 'api.wrong_token_type') }, 400)
 
   await prisma.$transaction([
     prisma.verificationToken.update({
@@ -289,7 +290,7 @@ publicRoutes.get('/verify/:token', async (c) => {
   await createAuditLog('signature.verified', 'Signature', tokenRecord.signatureId)
 
   return c.json({
-    message: 'Email verified successfully.',
+    message: t(c, 'api.email_verified_successfully'),
     petitionSlug: tokenRecord.signature.petition.slug,
     petitionTitle: tokenRecord.signature.petition.title,
   })
@@ -301,11 +302,11 @@ const withdrawRequestSchema = z.object({ email: z.string().email() })
 
 publicRoutes.post('/petitions/:slug/withdraw-request', rateLimit(5, 60_000), async (c) => {
   const petition = await prisma.petition.findUnique({ where: { slug: c.req.param('slug') } })
-  if (!petition) return c.json({ error: 'Not found' }, 404)
+  if (!petition) return c.json({ error: t(c, 'api.not_found') }, 404)
 
   const body = await c.req.json().catch(() => null)
   const parsed = withdrawRequestSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Invalid email' }, 422)
+  if (!parsed.success) return c.json({ error: t(c, 'api.invalid_email') }, 422)
 
   const signature = await prisma.signature.findUnique({
     where: { petitionId_email: { petitionId: petition.id, email: parsed.data.email } },
@@ -313,7 +314,7 @@ publicRoutes.post('/petitions/:slug/withdraw-request', rateLimit(5, 60_000), asy
 
   // Return success regardless to avoid email enumeration
   if (!signature || signature.withdrawn) {
-    return c.json({ message: 'If a matching signature was found, a withdrawal email has been sent.' })
+    return c.json({ message: t(c, 'api.if_a_matching_signature_was_found_a_withdrawal_email_has_been_sent') })
   }
 
   const { token, hash } = generateToken()
@@ -321,9 +322,9 @@ publicRoutes.post('/petitions/:slug/withdraw-request', rateLimit(5, 60_000), asy
   await prisma.verificationToken.create({
     data: { signatureId: signature.id, tokenHash: hash, expiresAt, type: 'withdraw' },
   })
-  await sendWithdrawalEmail(parsed.data.email, signature.fullName, petition.title, token)
+  await sendWithdrawalEmail(parsed.data.email, signature.fullName, petition.title, token, getLocale(c))
 
-  return c.json({ message: 'If a matching signature was found, a withdrawal email has been sent.' })
+  return c.json({ message: t(c, 'api.if_a_matching_signature_was_found_a_withdrawal_email_has_been_sent') })
 })
 
 // ── Confirm withdrawal ────────────────────────────────────────────────────────
@@ -337,10 +338,10 @@ publicRoutes.post('/withdraw/:token', rateLimit(10, 60_000), async (c) => {
     include: { signature: { include: { petition: true } } },
   })
 
-  if (!tokenRecord) return c.json({ error: 'Invalid token' }, 400)
-  if (tokenRecord.usedAt) return c.json({ error: 'Token already used' }, 400)
-  if (tokenRecord.expiresAt < new Date()) return c.json({ error: 'Token expired' }, 400)
-  if (tokenRecord.type !== 'withdraw') return c.json({ error: 'Wrong token type' }, 400)
+  if (!tokenRecord) return c.json({ error: t(c, 'api.invalid_token') }, 400)
+  if (tokenRecord.usedAt) return c.json({ error: t(c, 'api.token_already_used') }, 400)
+  if (tokenRecord.expiresAt < new Date()) return c.json({ error: t(c, 'api.token_expired') }, 400)
+  if (tokenRecord.type !== 'withdraw') return c.json({ error: t(c, 'api.wrong_token_type') }, 400)
 
   await prisma.$transaction([
     prisma.verificationToken.update({
@@ -356,7 +357,7 @@ publicRoutes.post('/withdraw/:token', rateLimit(10, 60_000), async (c) => {
   await createAuditLog('signature.withdrawn', 'Signature', tokenRecord.signatureId)
 
   return c.json({
-    message: 'Your signature has been withdrawn.',
+    message: t(c, 'api.your_signature_has_been_withdrawn'),
     petitionSlug: tokenRecord.signature.petition.slug,
     petitionTitle: tokenRecord.signature.petition.title,
   })

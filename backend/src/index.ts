@@ -4,6 +4,7 @@ import { logger } from 'hono/logger'
 import { secureHeaders } from 'hono/secure-headers'
 import { publicRoutes } from './routes/public.js'
 import { adminRoutes } from './routes/admin.js'
+import { t } from './lib/i18n.js'
 
 const app = new Hono()
 
@@ -21,7 +22,7 @@ app.route('/api/admin', adminRoutes)
 
 app.onError((err, c) => {
   console.error(err)
-  return c.json({ error: 'Internal server error' }, 500)
+  return c.json({ error: t(c, 'api.internal_server_error') }, 500)
 })
 
 const port = parseInt(process.env.PORT || '3001')

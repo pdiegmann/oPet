@@ -1,5 +1,6 @@
 import type { Context, Next } from 'hono'
 import { verify, sign } from 'jsonwebtoken'
+import { t } from '../lib/i18n.js'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret'
 
@@ -13,7 +14,7 @@ export async function authMiddleware(c: Context, next: Next) {
   const token = c.req.header('Authorization')?.replace('Bearer ', '')
 
   if (!token) {
-    return c.json({ error: 'Unauthorized' }, 401)
+    return c.json({ error: t(c, 'api.unauthorized') }, 401)
   }
 
   try {
@@ -21,7 +22,7 @@ export async function authMiddleware(c: Context, next: Next) {
     c.set('user', payload)
     await next()
   } catch {
-    return c.json({ error: 'Invalid token' }, 401)
+    return c.json({ error: t(c, 'api.invalid_token') }, 401)
   }
 }
 

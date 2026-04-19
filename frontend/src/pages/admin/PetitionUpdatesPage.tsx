@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { TextField, TextFieldInput, TextFieldLabel } from '@/components/ui/text-field'
+import { t } from '@/lib/i18n'
 
 export default function PetitionUpdatesPage() {
   const token = getToken() ?? ''
@@ -67,7 +68,7 @@ export default function PetitionUpdatesPage() {
     setSaving(true)
     try {
       if (!title().trim() || !content().trim()) {
-        throw new Error('Title and content are required.')
+        throw new Error(t('app.title_and_content_are_required'))
       }
 
       if (!selectedUpdateId()) {
@@ -76,17 +77,17 @@ export default function PetitionUpdatesPage() {
           content: content().trim(),
         })
         setSelectedUpdateId(created.id)
-        setMessage('Draft update created.')
+        setMessage(t('app.draft_update_created'))
       } else {
         await adminApi.updatePetitionUpdate(token, params.id, selectedUpdateId()!, {
           title: title().trim(),
           content: content().trim(),
         })
-        setMessage('Draft update saved.')
+        setMessage(t('app.draft_update_saved'))
       }
       await reloadAndKeepSelection()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to save update')
+      setError(err instanceof Error ? err.message : t('app.failed_to_save_update'))
     } finally {
       setSaving(false)
     }
@@ -98,7 +99,7 @@ export default function PetitionUpdatesPage() {
     setPublishInFlight(true)
     try {
       if (!title().trim() || !content().trim()) {
-        throw new Error('Title and content are required.')
+        throw new Error(t('app.title_and_content_are_required'))
       }
 
       let currentId = selectedUpdateId()
@@ -115,10 +116,10 @@ export default function PetitionUpdatesPage() {
         title: title().trim(),
         content: content().trim(),
       })
-      setMessage('Update published as a new immutable version.')
+      setMessage(t('app.update_published_as_a_new_immutable_version'))
       await reloadAndKeepSelection()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to publish update')
+      setError(err instanceof Error ? err.message : t('app.failed_to_publish_update'))
     } finally {
       setPublishInFlight(false)
     }
@@ -132,11 +133,11 @@ export default function PetitionUpdatesPage() {
     setMessage(null)
     try {
       await adminApi.deletePetitionUpdate(token, params.id, id)
-      setMessage('Update deleted. Timeline placeholder remains publicly visible.')
+      setMessage(t('app.update_deleted_timeline_placeholder_remains_publicly_visible'))
       setDeleteTargetId(null)
       await reloadAndKeepSelection()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to delete update')
+      setError(err instanceof Error ? err.message : t('app.failed_to_delete_update'))
     }
   }
 
@@ -144,7 +145,7 @@ export default function PetitionUpdatesPage() {
     <div class="space-y-5">
       <div class="flex items-center justify-between gap-2">
         <div>
-          <h1 class="text-2xl font-bold">Petition Updates</h1>
+          <h1 class="text-2xl font-bold">{t('app.petition_updates')}</h1>
           <Show when={petition()}>
             {(p) => (
               <p class="text-sm text-muted-foreground mt-1">
@@ -155,12 +156,12 @@ export default function PetitionUpdatesPage() {
         </div>
         <div class="flex items-center gap-2">
           <Button variant="outline" as={A} href={`/admin/petitions/${params.id}/edit`}>
-            Back to petition
+            {t('app.back_to_petition')}
           </Button>
           <Show when={petition()}>
             {(p) => (
               <Button variant="outline" as="a" href={`/petition/${p().slug}`} target="_blank">
-                Open public page ↗
+                {t('app.open_public_page')} ↗
               </Button>
             )}
           </Show>
@@ -186,7 +187,7 @@ export default function PetitionUpdatesPage() {
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-[300px_minmax(0,1fr)]">
         <Card>
           <CardHeader>
-            <CardTitle class="text-base">Existing updates</CardTitle>
+            <CardTitle class="text-base">{t('app.existing_updates')}</CardTitle>
           </CardHeader>
           <CardContent class="space-y-2">
             <Button
@@ -200,12 +201,12 @@ export default function PetitionUpdatesPage() {
                 setMessage(null)
               }}
             >
-              + New draft update
+              + {t('app.new_draft_update')}
             </Button>
 
             <Show
               when={(updates()?.updates.length ?? 0) > 0}
-              fallback={<p class="text-sm text-muted-foreground">No updates yet.</p>}
+              fallback={<p class="text-sm text-muted-foreground">{t('app.no_updates_yet')}</p>}
             >
               {updates()?.updates.map((update) => {
                 const active = selectedUpdateId() === update.id
@@ -218,11 +219,11 @@ export default function PetitionUpdatesPage() {
                   >
                     <div class="font-medium line-clamp-2">{update.currentTitle}</div>
                     <div class="text-xs text-muted-foreground mt-1">
-                      {update.deletedAt ? 'Deleted' : `${update.versions.length} published version(s)`}
+                      {update.deletedAt ? t('app.deleted') : t('app.var_published_version_s', { count: update.versions.length })}
                     </div>
                     <Show when={lastVersion}>
                       <div class="text-xs text-muted-foreground mt-0.5">
-                        Latest: v{lastVersion?.versionNumber} on {new Date(lastVersion!.publishedAt).toLocaleString()}
+                        {t('app.latest')}: v{lastVersion?.versionNumber} {t('app.on')} {new Date(lastVersion!.publishedAt).toLocaleString()}
                       </div>
                     </Show>
                   </button>
@@ -235,14 +236,14 @@ export default function PetitionUpdatesPage() {
         <Card>
           <CardHeader>
             <CardTitle class="text-base">
-              <Show when={selectedUpdate()} fallback={'New draft update'}>
-                {(item) => `Editing: ${item().currentTitle}`}
+              <Show when={selectedUpdate()} fallback={t('app.new_draft_update')}>
+                {(item) => `${t('app.editing')}: ${item().currentTitle}`}
               </Show>
             </CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
             <TextField>
-              <TextFieldLabel>Title *</TextFieldLabel>
+              <TextFieldLabel>{t('app.title_2')}</TextFieldLabel>
               <TextFieldInput
                 type="text"
                 value={title()}
@@ -252,12 +253,12 @@ export default function PetitionUpdatesPage() {
             </TextField>
 
             <div class="space-y-1">
-              <label class="text-sm font-medium">Content *</label>
+              <label class="text-sm font-medium">{t('app.content')}</label>
               <QuillEditor
                 id="petition-update-editor"
                 value={content()}
                 onValueChange={setContent}
-                placeholder="Write your petition update here…"
+                placeholder={t('app.write_your_petition_update_here')}
                 minHeight="14rem"
               />
             </div>
@@ -267,31 +268,31 @@ export default function PetitionUpdatesPage() {
                 onClick={handleCreateOrSave}
                 disabled={saving() || (!!selectedUpdateId() && !!selectedUpdate()?.deletedAt)}
               >
-                {saving() ? 'Saving…' : selectedUpdateId() ? 'Save draft' : 'Create draft'}
+                {saving() ? t('app.saving') : selectedUpdateId() ? t('app.save_draft') : t('app.create_draft')}
               </Button>
               <Button
                 variant="secondary"
                 onClick={handlePublish}
                 disabled={publishInFlight() || !!selectedUpdate()?.deletedAt}
               >
-                {publishInFlight() ? 'Publishing…' : selectedUpdateId() ? 'Publish new version' : 'Publish now'}
+                {publishInFlight() ? t('app.publishing') : selectedUpdateId() ? t('app.publish_new_version') : t('app.publish_now')}
               </Button>
               <Button
                 variant="destructive"
                 disabled={!selectedUpdateId() || !!selectedUpdate()?.deletedAt}
                 onClick={() => setDeleteTargetId(selectedUpdateId())}
               >
-                Delete update
+                {t('app.delete_update')}
               </Button>
             </div>
 
             <Show when={selectedUpdate()}>
               {(item) => (
                 <div class="space-y-2 border-t pt-4">
-                  <h2 class="text-sm font-semibold">Published versions</h2>
+                  <h2 class="text-sm font-semibold">{t('app.published_versions')}</h2>
                   <Show
                     when={item().versions.length > 0}
-                    fallback={<p class="text-sm text-muted-foreground">No published versions yet.</p>}
+                    fallback={<p class="text-sm text-muted-foreground">{t('app.no_published_versions_yet')}</p>}
                   >
                     <div class="space-y-3">
                       {item().versions.map((version) => (
@@ -301,8 +302,8 @@ export default function PetitionUpdatesPage() {
                               v{version.versionNumber}: {version.title}
                             </CardTitle>
                             <p class="text-xs text-muted-foreground">
-                              Published {new Date(version.publishedAt).toLocaleString()}
-                              {version.publisher ? ` by ${version.publisher.email}` : ''}
+                              {t('app.published')} {new Date(version.publishedAt).toLocaleString()}
+                              {version.publisher ? ` ${t('app.by')} ${version.publisher.email}` : ''}
                             </p>
                           </CardHeader>
                           <CardContent>
@@ -324,9 +325,9 @@ export default function PetitionUpdatesPage() {
         onOpenChange={(open) => {
           if (!open) setDeleteTargetId(null)
         }}
-        title="Delete update"
-        description="Delete this update from the visible timeline. A placeholder stays, and published versions remain accessible."
-        confirmLabel="Delete"
+        title={t('app.delete_update')}
+        description={t('app.delete_this_update_from_the_visible_timeline_a_placeholder_stays_and_p')}
+        confirmLabel={t('app.delete')}
         variant="destructive"
         onConfirm={handleDelete}
       />

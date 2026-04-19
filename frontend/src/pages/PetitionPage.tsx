@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { TextField, TextFieldInput, TextFieldLabel, TextFieldTextArea } from '@/components/ui/text-field'
 import { StatusBadge, type PetitionStatus } from '@/components/StatusBadge'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
+import { t } from '@/lib/i18n'
 
 export default function PetitionPage() {
   const params = useParams<{ slug: string }>()
@@ -66,7 +67,7 @@ export default function PetitionPage() {
       await api.signPetition(params.slug, form())
       navigate(`/petition/${params.slug}/success`)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Submission failed. Please try again.')
+      setError(err instanceof Error ? err.message : t('app.submission_failed_please_try_again'))
     } finally {
       setSubmitting(false)
     }
@@ -84,7 +85,7 @@ export default function PetitionPage() {
 
       <Show when={petition.error}>
         <Alert variant="destructive">
-          <AlertDescription>Petition not found.</AlertDescription>
+          <AlertDescription>{t('app.petition_not_found')}</AlertDescription>
         </Alert>
       </Show>
 
@@ -101,7 +102,7 @@ export default function PetitionPage() {
                 <div class="petition-summary mb-4 text-muted-foreground" innerHTML={p().summary} />
               </Show>
               <p class="mb-1 text-muted-foreground">
-                To:{' '}
+                {t('app.to')}:{' '}
                 <Show when={p().recipientDescription} fallback={<strong>{p().recipientName}</strong>}>
                   {' '}
                   <HoverCard openDelay={150} closeDelay={100}>
@@ -119,8 +120,8 @@ export default function PetitionPage() {
                 </Show>
               </p>
               <p class="text-sm text-muted-foreground mb-4">
-                {p().signatureCount.toLocaleString()} signatures
-                <Show when={p().goalCount}> of {p().goalCount?.toLocaleString()} goal</Show>
+                {t('app.var_signatures', { count: p().signatureCount.toLocaleString() })}
+                <Show when={p().goalCount}> {t('app.of_var_goal', { goal: p().goalCount?.toLocaleString() ?? '' })}</Show>
               </p>
 
               <Show when={p().goalCount}>
@@ -137,10 +138,10 @@ export default function PetitionPage() {
 
               <Show when={!updates.loading}>
                 <section class="mb-8">
-                  <h2 class="text-lg font-bold mb-3">Updates</h2>
+                  <h2 class="text-lg font-bold mb-3">{t('app.updates')}</h2>
                   <Show
                     when={(updates()?.updates.length ?? 0) > 0}
-                    fallback={<p class="text-sm text-muted-foreground">No updates published yet.</p>}
+                    fallback={<p class="text-sm text-muted-foreground">{t('app.no_updates_published_yet')}</p>}
                   >
                     <div class="space-y-4">
                       <For each={updates()?.updates}>
@@ -153,7 +154,7 @@ export default function PetitionPage() {
                             >
                               <div class="flex items-center justify-between gap-3">
                                 <div class="text-base font-semibold">
-                                  {update.isDeleted ? 'Deleted update' : (update.latestVersion?.title ?? 'Published update')}
+                                  {update.isDeleted ? t('app.deleted_update') : (update.latestVersion?.title ?? t('app.published_update'))}
                                 </div>
                                 <div class="text-xs text-muted-foreground whitespace-nowrap">
                                   {new Date(update.latestVersion?.publishedAt ?? update.createdAt).toLocaleString()}
@@ -167,15 +168,15 @@ export default function PetitionPage() {
                                 </Show>
                                 <Show when={update.isDeleted}>
                                   <p class="text-sm text-muted-foreground">
-                                    This update was deleted.
+                                    {t('app.this_update_was_deleted')}
                                   </p>
                                   <Show when={update.latestVersion}>
                                     <div class="rounded border p-3">
                                       <div class="text-sm font-medium">
-                                        Latest published: {update.latestVersion?.title}
+                                        {t('app.latest_published')}: {update.latestVersion?.title}
                                       </div>
                                       <p class="text-xs text-muted-foreground mt-1">
-                                        Published {new Date(update.latestVersion!.publishedAt).toLocaleString()}
+                                        {t('app.published_var', { date: new Date(update.latestVersion!.publishedAt).toLocaleString() })}
                                       </p>
                                       <div class="petition-body mt-2 text-sm" innerHTML={update.latestVersion!.content} />
                                     </div>
@@ -189,14 +190,14 @@ export default function PetitionPage() {
                                       size="sm"
                                       onClick={() => toggleHistory(update.id)}
                                     >
-                                      {historyShownUpdates().has(update.id) ? 'Hide version history' : 'Show version history'}
+                                      {historyShownUpdates().has(update.id) ? t('app.hide_version_history') : t('app.show_version_history')}
                                     </Button>
                                   </div>
                                 </Show>
 
                                 <Show when={historyShownUpdates().has(update.id) && update.versions && update.versions!.length > 1}>
                                   <div class="space-y-3">
-                                    <h3 class="text-sm font-semibold">Version history</h3>
+                                    <h3 class="text-sm font-semibold">{t('app.version_history')}</h3>
                                     <For each={update.versions!.slice(1)}>
                                       {(version) => (
                                         <div class="rounded border p-3">
@@ -204,7 +205,7 @@ export default function PetitionPage() {
                                             v{version.versionNumber}: {version.title}
                                           </div>
                                           <p class="text-xs text-muted-foreground mt-1">
-                                            Published {new Date(version.publishedAt).toLocaleString()}
+                                            {t('app.published_var', { date: new Date(version.publishedAt).toLocaleString() })}
                                           </p>
                                           <div class="petition-body mt-2 text-sm" innerHTML={version.content} />
                                         </div>
@@ -223,7 +224,7 @@ export default function PetitionPage() {
               </Show>
 
               <Show when={p().allowPublicNames && p().signatures && p().signatures!.length > 0}>
-                <h2 class="text-lg font-bold mb-4">Recent signers</h2>
+                <h2 class="text-lg font-bold mb-4">{t('app.recent_signers')}</h2>
                 <div class="flex flex-col gap-3 mb-8">
                   <For each={p().signatures}>
                     {(sig) => (
@@ -250,7 +251,7 @@ export default function PetitionPage() {
             <aside class="min-w-0">
               <Card class="lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
                 <CardHeader>
-                  <CardTitle>Sign this petition</CardTitle>
+                  <CardTitle>{t('app.sign_this_petition')}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Show when={error()}>
@@ -264,14 +265,14 @@ export default function PetitionPage() {
                     fallback={
                       <Alert>
                         <AlertDescription>
-                          This petition is currently {p().status} and not accepting new signatures.
+                          {t('app.this_petition_is_currently_var_and_not_accepting_new_signatures', { status: p().status })}
                         </AlertDescription>
                       </Alert>
                     }
                   >
                     <form onSubmit={handleSubmit} class="space-y-4">
                       <TextField>
-                        <TextFieldLabel>Full name *</TextFieldLabel>
+                        <TextFieldLabel>{t('app.full_name')}</TextFieldLabel>
                         <TextFieldInput
                           type="text"
                           required
@@ -281,7 +282,7 @@ export default function PetitionPage() {
                       </TextField>
 
                       <TextField>
-                        <TextFieldLabel>Email address *</TextFieldLabel>
+                        <TextFieldLabel>{t('app.email_address')}</TextFieldLabel>
                         <TextFieldInput
                           type="email"
                           required
@@ -292,7 +293,7 @@ export default function PetitionPage() {
 
                       <div class="grid grid-cols-2 gap-3">
                         <TextField>
-                          <TextFieldLabel>City</TextFieldLabel>
+                          <TextFieldLabel>{t('app.city')}</TextFieldLabel>
                           <TextFieldInput
                             type="text"
                             value={form().city ?? ''}
@@ -300,7 +301,7 @@ export default function PetitionPage() {
                           />
                         </TextField>
                         <TextField>
-                          <TextFieldLabel>Country</TextFieldLabel>
+                          <TextFieldLabel>{t('app.country')}</TextFieldLabel>
                           <TextFieldInput
                             type="text"
                             value={form().country ?? ''}
@@ -311,7 +312,7 @@ export default function PetitionPage() {
 
                       <Show when={p().allowComments}>
                         <TextField>
-                          <TextFieldLabel>Comment (optional)</TextFieldLabel>
+                          <TextFieldLabel>{t('app.comment_optional')}</TextFieldLabel>
                           <TextFieldTextArea
                             rows={3}
                             maxLength={1000}
@@ -328,7 +329,7 @@ export default function PetitionPage() {
                               checked={form().publicOptIn}
                               onChange={(checked) => update('publicOptIn', checked)}
                             />
-                            Display my name publicly
+                            {t('app.display_my_name_publicly')}
                           </label>
                         </Show>
                         <label class="flex items-center gap-2 cursor-pointer text-sm">
@@ -336,25 +337,25 @@ export default function PetitionPage() {
                             checked={form().updatesOptIn}
                             onChange={(checked) => update('updatesOptIn', checked)}
                           />
-                          Send me updates about this petition
+                          {t('app.send_me_updates_about_this_petition')}
                         </label>
                         <label class="flex items-center gap-2 cursor-pointer text-sm">
                           <Checkbox
                             checked={form().recipientShareOptIn}
                             onChange={(checked) => update('recipientShareOptIn', checked)}
                           />
-                          Share my signature with the recipient
+                          {t('app.share_my_signature_with_the_recipient')}
                         </label>
                       </div>
 
                       <p class="text-xs text-muted-foreground">
-                        By signing, you agree to our{' '}
-                        <a href="/privacy" target="_blank" class="underline">Privacy Policy</a>.
-                        {p().requireVerification && ' You will receive a confirmation email.'}
+                        {t('app.by_signing_you_agree_to_our')}{' '}
+                        <a href="/privacy" target="_blank" class="underline">{t('app.privacy_policy')}</a>.
+                        {p().requireVerification && ` ${t('app.you_will_receive_a_confirmation_email')}`}
                       </p>
 
                       <Button type="submit" class="w-full" disabled={submitting()}>
-                        {submitting() ? 'Submitting…' : 'Sign petition'}
+                        {submitting() ? t('app.submitting') : t('app.sign_petition')}
                       </Button>
                     </form>
                   </Show>

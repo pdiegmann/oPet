@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { TextField, TextFieldInput, TextFieldLabel } from '@/components/ui/text-field'
+import { t } from '@/lib/i18n'
 
 export default function AdminLoginPage() {
   const navigate = useNavigate()
@@ -23,7 +24,7 @@ export default function AdminLoginPage() {
       login(res.token, res.user)
       navigate('/admin/dashboard', { replace: true })
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+      setError(err instanceof Error ? err.message : t('app.login_failed'))
     } finally {
       setLoading(false)
     }
@@ -33,8 +34,8 @@ export default function AdminLoginPage() {
     <div class="min-h-screen flex items-center justify-center bg-background">
       <Card class="w-full max-w-sm">
         <CardHeader class="text-center">
-          <CardTitle class="text-2xl">✊ oPet Admin</CardTitle>
-          <CardDescription>Sign in to manage petitions</CardDescription>
+          <CardTitle class="text-2xl">✊ oPet {t('app.admin')}</CardTitle>
+          <CardDescription>{t('app.sign_in_to_manage_petitions')}</CardDescription>
         </CardHeader>
         <CardContent>
           <Show when={error()}>
@@ -45,7 +46,7 @@ export default function AdminLoginPage() {
 
           <form onSubmit={handleSubmit} class="space-y-4">
             <TextField>
-              <TextFieldLabel>Email</TextFieldLabel>
+              <TextFieldLabel>{t('app.email')}</TextFieldLabel>
               <TextFieldInput
                 type="email"
                 required
@@ -55,7 +56,7 @@ export default function AdminLoginPage() {
               />
             </TextField>
             <TextField>
-              <TextFieldLabel>Password</TextFieldLabel>
+              <TextFieldLabel>{t('app.password')}</TextFieldLabel>
               <TextFieldInput
                 type="password"
                 required
@@ -65,7 +66,7 @@ export default function AdminLoginPage() {
               />
             </TextField>
             <Button type="submit" class="w-full mt-2" disabled={loading()}>
-              {loading() ? 'Signing in…' : 'Sign in'}
+              {loading() ? t('app.signing_in') : t('app.sign_in')}
             </Button>
           </form>
         </CardContent>

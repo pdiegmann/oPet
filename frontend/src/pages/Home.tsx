@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { TextField, TextFieldInput } from '@/components/ui/text-field'
 import { StatusBadge, type PetitionStatus } from '@/components/StatusBadge'
 import { PaginationControls } from '@/components/PaginationControls'
+import { t } from '@/lib/i18n'
 
 export default function Home() {
   const [search, setSearch] = createSignal('')
@@ -33,20 +34,18 @@ export default function Home() {
   return (
     <div>
       <section class="text-center py-12 pb-8">
-        <h1 class="text-4xl font-extrabold mb-3">Make your voice heard</h1>
-        <p class="text-lg text-muted-foreground max-w-xl mx-auto mb-8">
-          Browse active petitions and add your signature to causes that matter.
-        </p>
+        <h1 class="text-4xl font-extrabold mb-3">{t('app.make_your_voice_heard')}</h1>
+        <p class="text-lg text-muted-foreground max-w-xl mx-auto mb-8">{t('app.browse_active_petitions_and_add_your_signature_to_causes_that_matter')}</p>
         <form onSubmit={handleSearch} class="max-w-lg mx-auto flex gap-2">
           <TextField class="flex-1">
             <TextFieldInput
               type="search"
-              placeholder="Search petitions…"
+              placeholder={t('app.search_petitions')}
               value={search()}
               onInput={(e) => setSearch(e.currentTarget.value)}
             />
           </TextField>
-          <Button type="submit">Search</Button>
+          <Button type="submit">{t('app.search_2')}</Button>
         </form>
       </section>
 
@@ -68,7 +67,7 @@ export default function Home() {
 
       <Show when={data.error}>
         <Alert variant="destructive">
-          <AlertDescription>Failed to load petitions. Please try again.</AlertDescription>
+          <AlertDescription>{t('app.failed_to_load_petitions_please_try_again')}</AlertDescription>
         </Alert>
       </Show>
 
@@ -78,7 +77,9 @@ export default function Home() {
             <Show when={result().petitions.length === 0}>
               <Alert>
                 <AlertDescription>
-                  No petitions found{query() ? ` for "${query()}"` : ''}.
+                  {query()
+                    ? t('app.no_petitions_found_for_var', { query: query() })
+                    : t('app.no_petitions_found_2')}
                 </AlertDescription>
               </Alert>
             </Show>
@@ -91,7 +92,7 @@ export default function Home() {
                       <CardHeader class="pb-2">
                         <CardTitle class="text-base leading-snug">{petition.title}</CardTitle>
                         <p class="text-sm text-muted-foreground">
-                          To: <strong>{petition.recipientName}</strong>
+                          {t('app.to')}: <strong>{petition.recipientName}</strong>
                         </p>
                       </CardHeader>
                       <CardContent>
@@ -110,7 +111,7 @@ export default function Home() {
                         <span class="text-xs text-muted-foreground ml-auto">
                           {petition.goalCount
                             ? `${petition.signatureCount} / ${petition.goalCount}`
-                            : `${petition.signatureCount} signatures`}
+                            : t('app.var_signatures', { count: petition.signatureCount })}
                         </span>
                       </CardFooter>
                     </Card>

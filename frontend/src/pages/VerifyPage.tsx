@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { t } from '@/lib/i18n'
 
 export default function VerifyPage() {
   const params = useParams<{ token: string }>()
@@ -27,13 +28,13 @@ export default function VerifyPage() {
         <Card>
           <CardContent class="pt-8 pb-8 space-y-4">
             <div class="text-5xl">❌</div>
-            <h1 class="text-2xl font-bold">Verification failed</h1>
+            <h1 class="text-2xl font-bold">{t('app.verification_failed')}</h1>
             <Alert variant="destructive">
               <AlertDescription>
-                {(result.error as Error).message || 'This link may be invalid or expired.'}
+                {(result.error as Error).message || t('app.this_link_may_be_invalid_or_expired')}
               </AlertDescription>
             </Alert>
-            <Button variant="outline" as={A} href="/">Go to homepage</Button>
+            <Button variant="outline" as={A} href="/">{t('app.go_to_homepage')}</Button>
           </CardContent>
         </Card>
       </Show>
@@ -43,12 +44,12 @@ export default function VerifyPage() {
           <Card>
             <CardContent class="pt-8 pb-8 space-y-4">
               <div class="text-5xl">✅</div>
-              <h1 class="text-2xl font-bold">Email verified!</h1>
+              <h1 class="text-2xl font-bold">{t('app.email_verified')}</h1>
               <p class="text-muted-foreground">
-                Your signature for <strong>{r().petitionTitle}</strong> has been confirmed.
+                {t('app.your_signature_for')} <strong>{r().petitionTitle}</strong> {t('app.has_been_confirmed')}
               </p>
               <Button as={A} href={`/petition/${r().petitionSlug}`}>
-                View petition
+                {t('app.view_petition')}
               </Button>
             </CardContent>
           </Card>

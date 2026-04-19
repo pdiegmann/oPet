@@ -7,6 +7,7 @@ import { rateLimit } from '../middleware/rateLimit.js'
 import { createAuditLog } from '../lib/audit.js'
 import { exportSignatures } from '../lib/export.js'
 import type { AppVariables } from '../types.js'
+import { t } from '../lib/i18n.js'
 
 export const adminRoutes = new Hono<{ Variables: AppVariables }>()
 
@@ -59,13 +60,13 @@ const loginSchema = z.object({
 adminRoutes.post('/login', rateLimit(10, 60_000), async (c) => {
   const body = await c.req.json().catch(() => null)
   const parsed = loginSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Invalid credentials' }, 422)
+  if (!parsed.success) return c.json({ error: t(c, 'api.invalid_credentials') }, 422)
 
   const user = await prisma.user.findUnique({ where: { email: parsed.data.email } })
-  if (!user) return c.json({ error: 'Invalid credentials' }, 401)
+  if (!user) return c.json({ error: t(c, 'api.invalid_credentials') }, 401)
 
   const valid = await bcrypt.compare(parsed.data.password, user.passwordHash)
-  if (!valid) return c.json({ error: 'Invalid credentials' }, 401)
+  if (!valid) return c.json({ error: t(c, 'api.invalid_credentials') }, 401)
 
   const role = normalizeRole(user.role)
   const token = signToken({ userId: user.id, email: user.email, role })
@@ -195,11 +196,11 @@ adminRoutes.get('/petitions/:id', async (c) => {
       _count: { select: { signatures: true } },
     },
   })
-  if (!petition) return c.json({ error: 'Not found' }, 404)
+  if (!petition) return c.json({ error: t(c, 'api.not_found') }, 404)
 
   if (!isAdmin(role)) {
     const canAccess = await ensurePetitionAccess(user.userId, role, petitionId)
-    if (!canAccess) return c.json({ error: 'Forbidden' }, 403)
+    if (!canAccess) return c.json({ error: t(c, 'api.forbidden') }, 403)
   }
 
   return c.json(petition)
@@ -208,14 +209,14 @@ adminRoutes.get('/petitions/:id', async (c) => {
 adminRoutes.post('/petitions', async (c) => {
   const user = c.get('user')
   const role = normalizeRole(user.role)
-  if (!isAdmin(role)) return c.json({ error: 'Forbidden' }, 403)
+  if (!isAdmin(role)) return c.json({ error: t(c, 'api.forbidden') }, 403)
 
   const body = await c.req.json().catch(() => null)
   const parsed = petitionSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Validation error', details: parsed.error.flatten() }, 422)
+  if (!parsed.success) return c.json({ error: t(c, 'api.validation_error'), details: parsed.error.flatten() }, 422)
 
   const existing = await prisma.petition.findUnique({ where: { slug: parsed.data.slug } })
-  if (existing) return c.json({ error: 'Slug already in use' }, 409)
+  if (existing) return c.json({ error: t(c, 'api.slug_already_in_use') }, 409)
 
   const petition = await prisma.petition.create({
     data: {
@@ -233,19 +234,19 @@ adminRoutes.post('/petitions', async (c) => {
 adminRoutes.put('/petitions/:id', async (c) => {
   const user = c.get('user')
   const role = normalizeRole(user.role)
-  if (!canWritePetitions(role)) return c.json({ error: 'Forbidden' }, 403)
+  if (!canWritePetitions(role)) return c.json({ error: t(c, 'api.forbidden') }, 403)
 
   const body = await c.req.json().catch(() => null)
   const parsed = petitionSchema.partial().safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Validation error', details: parsed.error.flatten() }, 422)
+  if (!parsed.success) return c.json({ error: t(c, 'api.validation_error'), details: parsed.error.flatten() }, 422)
 
   const petitionId = c.req.param('id')
   const existing = await prisma.petition.findUnique({ where: { id: petitionId } })
-  if (!existing) return c.json({ error: 'Not found' }, 404)
+  if (!existing) return c.json({ error: t(c, 'api.not_found') }, 404)
 
   if (!isAdmin(role)) {
     const canAccess = await ensurePetitionAccess(user.userId, role, petitionId)
-    if (!canAccess) return c.json({ error: 'Forbidden' }, 403)
+    if (!canAccess) return c.json({ error: t(c, 'api.forbidden') }, 403)
   }
 
   const petition = await prisma.petition.update({
@@ -264,15 +265,15 @@ adminRoutes.put('/petitions/:id', async (c) => {
 adminRoutes.delete('/petitions/:id', async (c) => {
   const user = c.get('user')
   const role = normalizeRole(user.role)
-  if (!canWritePetitions(role)) return c.json({ error: 'Forbidden' }, 403)
+  if (!canWritePetitions(role)) return c.json({ error: t(c, 'api.forbidden') }, 403)
 
   const petitionId = c.req.param('id')
   const existing = await prisma.petition.findUnique({ where: { id: petitionId } })
-  if (!existing) return c.json({ error: 'Not found' }, 404)
+  if (!existing) return c.json({ error: t(c, 'api.not_found') }, 404)
 
   if (!isAdmin(role)) {
     const canAccess = await ensurePetitionAccess(user.userId, role, petitionId)
-    if (!canAccess) return c.json({ error: 'Forbidden' }, 403)
+    if (!canAccess) return c.json({ error: t(c, 'api.forbidden') }, 403)
   }
 
   await prisma.petition.update({
@@ -281,7 +282,7 @@ adminRoutes.delete('/petitions/:id', async (c) => {
   })
 
   await createAuditLog('petition.archived', 'Petition', petitionId, user.userId)
-  return c.json({ message: 'Petition archived' })
+  return c.json({ message: t(c, 'api.petition_archived') })
 })
 
 // ── Petition Updates ──────────────────────────────────────────────────────────
@@ -300,7 +301,7 @@ const petitionUpdatePublishSchema = z.object({
 
 adminRoutes.get('/petitions/:id/updates', async (c) => {
   const petition = await prisma.petition.findUnique({ where: { id: c.req.param('id') } })
-  if (!petition) return c.json({ error: 'Not found' }, 404)
+  if (!petition) return c.json({ error: t(c, 'api.not_found') }, 404)
 
   const updates = await prisma.petitionUpdate.findMany({
     where: { petitionId: petition.id },
@@ -322,11 +323,11 @@ adminRoutes.get('/petitions/:id/updates', async (c) => {
 adminRoutes.post('/petitions/:id/updates', async (c) => {
   const user = c.get('user')
   const petition = await prisma.petition.findUnique({ where: { id: c.req.param('id') } })
-  if (!petition) return c.json({ error: 'Not found' }, 404)
+  if (!petition) return c.json({ error: t(c, 'api.not_found') }, 404)
 
   const body = await c.req.json().catch(() => null)
   const parsed = petitionUpdateDraftSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Validation error', details: parsed.error.flatten() }, 422)
+  if (!parsed.success) return c.json({ error: t(c, 'api.validation_error'), details: parsed.error.flatten() }, 422)
 
   const update = await prisma.petitionUpdate.create({
     data: {
@@ -354,12 +355,12 @@ adminRoutes.put('/petitions/:id/updates/:updateId', async (c) => {
   const user = c.get('user')
   const body = await c.req.json().catch(() => null)
   const parsed = petitionUpdatePatchSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Validation error', details: parsed.error.flatten() }, 422)
-  if (!Object.keys(parsed.data).length) return c.json({ error: 'No changes provided' }, 422)
+  if (!parsed.success) return c.json({ error: t(c, 'api.validation_error'), details: parsed.error.flatten() }, 422)
+  if (!Object.keys(parsed.data).length) return c.json({ error: t(c, 'api.no_changes_provided') }, 422)
 
   const existing = await prisma.petitionUpdate.findUnique({ where: { id: c.req.param('updateId') } })
-  if (!existing || existing.petitionId !== c.req.param('id')) return c.json({ error: 'Not found' }, 404)
-  if (existing.deletedAt) return c.json({ error: 'Update is deleted' }, 409)
+  if (!existing || existing.petitionId !== c.req.param('id')) return c.json({ error: t(c, 'api.not_found') }, 404)
+  if (existing.deletedAt) return c.json({ error: t(c, 'api.update_is_deleted') }, 409)
 
   const update = await prisma.petitionUpdate.update({
     where: { id: existing.id },
@@ -399,7 +400,7 @@ adminRoutes.get('/petitions/:id/updates/:updateId/versions', async (c) => {
       deleter: { select: { id: true, email: true } },
     },
   })
-  if (!existing || existing.petitionId !== c.req.param('id')) return c.json({ error: 'Not found' }, 404)
+  if (!existing || existing.petitionId !== c.req.param('id')) return c.json({ error: t(c, 'api.not_found') }, 404)
   return c.json(existing)
 })
 
@@ -407,7 +408,7 @@ adminRoutes.post('/petitions/:id/updates/:updateId/publish', async (c) => {
   const user = c.get('user')
   const body = await c.req.json().catch(() => null)
   const parsed = petitionUpdatePublishSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Validation error', details: parsed.error.flatten() }, 422)
+  if (!parsed.success) return c.json({ error: t(c, 'api.validation_error'), details: parsed.error.flatten() }, 422)
 
   const existing = await prisma.petitionUpdate.findUnique({
     where: { id: c.req.param('updateId') },
@@ -415,8 +416,8 @@ adminRoutes.post('/petitions/:id/updates/:updateId/publish', async (c) => {
       versions: { orderBy: { versionNumber: 'desc' }, take: 1 },
     },
   })
-  if (!existing || existing.petitionId !== c.req.param('id')) return c.json({ error: 'Not found' }, 404)
-  if (existing.deletedAt) return c.json({ error: 'Update is deleted' }, 409)
+  if (!existing || existing.petitionId !== c.req.param('id')) return c.json({ error: t(c, 'api.not_found') }, 404)
+  if (existing.deletedAt) return c.json({ error: t(c, 'api.update_is_deleted') }, 409)
 
   const title = parsed.data.title ?? existing.currentTitle
   const content = parsed.data.content ?? existing.currentContent
@@ -460,10 +461,10 @@ adminRoutes.post('/petitions/:id/updates/:updateId/publish', async (c) => {
 adminRoutes.delete('/petitions/:id/updates/:updateId', async (c) => {
   const user = c.get('user')
   const existing = await prisma.petitionUpdate.findUnique({ where: { id: c.req.param('updateId') } })
-  if (!existing || existing.petitionId !== c.req.param('id')) return c.json({ error: 'Not found' }, 404)
+  if (!existing || existing.petitionId !== c.req.param('id')) return c.json({ error: t(c, 'api.not_found') }, 404)
 
   if (existing.deletedAt) {
-    return c.json({ message: 'Update already deleted' })
+    return c.json({ message: t(c, 'api.update_already_deleted') })
   }
 
   await prisma.petitionUpdate.update({
@@ -478,7 +479,7 @@ adminRoutes.delete('/petitions/:id/updates/:updateId', async (c) => {
     petitionId: existing.petitionId,
   })
 
-  return c.json({ message: 'Update deleted' })
+  return c.json({ message: t(c, 'api.update_deleted') })
 })
 
 // ── Signatures ────────────────────────────────────────────────────────────────
@@ -495,11 +496,11 @@ adminRoutes.get('/petitions/:id/signatures', async (c) => {
 
   const petitionId = c.req.param('id')
   const petition = await prisma.petition.findUnique({ where: { id: petitionId } })
-  if (!petition) return c.json({ error: 'Not found' }, 404)
+  if (!petition) return c.json({ error: t(c, 'api.not_found') }, 404)
 
   if (!isAdmin(role)) {
     const canAccess = await ensurePetitionAccess(user.userId, role, petitionId)
-    if (!canAccess) return c.json({ error: 'Forbidden' }, 403)
+    if (!canAccess) return c.json({ error: t(c, 'api.forbidden') }, 403)
   }
 
   const where = {
@@ -524,14 +525,14 @@ adminRoutes.get('/petitions/:id/signatures', async (c) => {
 adminRoutes.delete('/signatures/:id', async (c) => {
   const user = c.get('user')
   const role = normalizeRole(user.role)
-  if (!canWritePetitions(role)) return c.json({ error: 'Forbidden' }, 403)
+  if (!canWritePetitions(role)) return c.json({ error: t(c, 'api.forbidden') }, 403)
 
   const sig = await prisma.signature.findUnique({ where: { id: c.req.param('id') } })
-  if (!sig) return c.json({ error: 'Not found' }, 404)
+  if (!sig) return c.json({ error: t(c, 'api.not_found') }, 404)
 
   if (!isAdmin(role)) {
     const canAccess = await ensurePetitionAccess(user.userId, role, sig.petitionId)
-    if (!canAccess) return c.json({ error: 'Forbidden' }, 403)
+    if (!canAccess) return c.json({ error: t(c, 'api.forbidden') }, 403)
   }
 
   await prisma.signature.update({
@@ -540,7 +541,7 @@ adminRoutes.delete('/signatures/:id', async (c) => {
   })
 
   await createAuditLog('signature.admin_removed', 'Signature', c.req.param('id'), user.userId)
-  return c.json({ message: 'Signature removed' })
+  return c.json({ message: t(c, 'api.signature_removed') })
 })
 
 // ── Export ────────────────────────────────────────────────────────────────────
@@ -558,14 +559,14 @@ adminRoutes.post('/export', async (c) => {
   const role = normalizeRole(user.role)
   const body = await c.req.json().catch(() => null)
   const parsed = exportSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Validation error', details: parsed.error.flatten() }, 422)
+  if (!parsed.success) return c.json({ error: t(c, 'api.validation_error'), details: parsed.error.flatten() }, 422)
 
   const { format, ...filters } = parsed.data
 
   const allowedPetitionIds = isAdmin(role) ? undefined : await getAccessiblePetitionIds(user.userId)
   if (!isAdmin(role)) {
     if (filters.petitionId && !allowedPetitionIds.includes(filters.petitionId)) {
-      return c.json({ error: 'Forbidden' }, 403)
+      return c.json({ error: t(c, 'api.forbidden') }, 403)
     }
     if (!filters.petitionId) {
       filters.petitionId = undefined
@@ -594,7 +595,7 @@ adminRoutes.post('/export', async (c) => {
 
 adminRoutes.get('/audit', async (c) => {
   const user = c.get('user')
-  if (!isAdmin(user.role)) return c.json({ error: 'Forbidden' }, 403)
+  if (!isAdmin(user.role)) return c.json({ error: t(c, 'api.forbidden') }, 403)
 
   const page = Math.max(1, parseInt(c.req.query('page') ?? '1'))
   const limit = Math.min(100, Math.max(1, parseInt(c.req.query('limit') ?? '50')))
@@ -617,7 +618,7 @@ adminRoutes.get('/audit', async (c) => {
 
 adminRoutes.get('/backup', async (c) => {
   const user = c.get('user')
-  if (!isAdmin(user.role)) return c.json({ error: 'Forbidden' }, 403)
+  if (!isAdmin(user.role)) return c.json({ error: t(c, 'api.forbidden') }, 403)
 
   const petitions = await prisma.petition.findMany({
     include: {
@@ -712,12 +713,12 @@ const restoreSchema = z.object({
 
 adminRoutes.post('/restore', async (c) => {
   const user = c.get('user')
-  if (!isAdmin(user.role)) return c.json({ error: 'Forbidden' }, 403)
+  if (!isAdmin(user.role)) return c.json({ error: t(c, 'api.forbidden') }, 403)
 
   const body = await c.req.json().catch(() => null)
   const parsed = restoreSchema.safeParse(body)
   if (!parsed.success) {
-    return c.json({ error: 'Invalid backup format', details: parsed.error.flatten() }, 422)
+    return c.json({ error: t(c, 'api.invalid_backup_format'), details: parsed.error.flatten() }, 422)
   }
 
   let restoredPetitions = 0
@@ -847,7 +848,7 @@ adminRoutes.post('/restore', async (c) => {
   })
 
   return c.json({
-    message: 'Restore complete',
+    message: t(c, 'api.restore_complete'),
     restoredPetitions,
     restoredSignatures,
     restoredUpdates,
@@ -873,7 +874,7 @@ const userUpdateSchema = z.object({
 
 adminRoutes.get('/users', async (c) => {
   const actorUser = c.get('user')
-  if (!isAdmin(actorUser.role)) return c.json({ error: 'Forbidden' }, 403)
+  if (!isAdmin(actorUser.role)) return c.json({ error: t(c, 'api.forbidden') }, 403)
 
   const users = await prisma.user.findMany({
     select: {
@@ -903,23 +904,23 @@ adminRoutes.get('/users', async (c) => {
 
 adminRoutes.post('/users', async (c) => {
   const actorUser = c.get('user')
-  if (!isAdmin(actorUser.role)) return c.json({ error: 'Forbidden' }, 403)
+  if (!isAdmin(actorUser.role)) return c.json({ error: t(c, 'api.forbidden') }, 403)
 
   const body = await c.req.json().catch(() => null)
   const parsed = userCreateSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Validation error', details: parsed.error.flatten() }, 422)
+  if (!parsed.success) return c.json({ error: t(c, 'api.validation_error'), details: parsed.error.flatten() }, 422)
 
   const existing = await prisma.user.findUnique({ where: { email: parsed.data.email } })
-  if (existing) return c.json({ error: 'Email already in use' }, 409)
+  if (existing) return c.json({ error: t(c, 'api.email_already_in_use') }, 409)
 
   if (parsed.data.petitionIds.length > 0) {
     const foundCount = await prisma.petition.count({ where: { id: { in: parsed.data.petitionIds } } })
     if (foundCount !== parsed.data.petitionIds.length) {
-      return c.json({ error: 'One or more petition assignments are invalid' }, 422)
+      return c.json({ error: t(c, 'api.one_or_more_petition_assignments_are_invalid') }, 422)
     }
   }
   if (parsed.data.role !== 'admin' && parsed.data.petitionIds.length === 0) {
-    return c.json({ error: 'Organizer and reader users must be assigned to at least one petition' }, 422)
+    return c.json({ error: t(c, 'api.organizer_and_reader_users_must_be_assigned_to_at_least_one_petition') }, 422)
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12)
@@ -965,25 +966,25 @@ adminRoutes.post('/users', async (c) => {
 
 adminRoutes.put('/users/:id', async (c) => {
   const actorUser = c.get('user')
-  if (!isAdmin(actorUser.role)) return c.json({ error: 'Forbidden' }, 403)
+  if (!isAdmin(actorUser.role)) return c.json({ error: t(c, 'api.forbidden') }, 403)
 
   const targetUserId = c.req.param('id')
   const body = await c.req.json().catch(() => null)
   const parsed = userUpdateSchema.safeParse(body)
-  if (!parsed.success) return c.json({ error: 'Validation error', details: parsed.error.flatten() }, 422)
+  if (!parsed.success) return c.json({ error: t(c, 'api.validation_error'), details: parsed.error.flatten() }, 422)
 
   const existing = await prisma.user.findUnique({ where: { id: targetUserId } })
-  if (!existing) return c.json({ error: 'Not found' }, 404)
+  if (!existing) return c.json({ error: t(c, 'api.not_found') }, 404)
 
   if (parsed.data.email && parsed.data.email !== existing.email) {
     const emailInUse = await prisma.user.findUnique({ where: { email: parsed.data.email } })
-    if (emailInUse) return c.json({ error: 'Email already in use' }, 409)
+    if (emailInUse) return c.json({ error: t(c, 'api.email_already_in_use') }, 409)
   }
 
   if (parsed.data.petitionIds && parsed.data.petitionIds.length > 0) {
     const foundCount = await prisma.petition.count({ where: { id: { in: parsed.data.petitionIds } } })
     if (foundCount !== parsed.data.petitionIds.length) {
-      return c.json({ error: 'One or more petition assignments are invalid' }, 422)
+      return c.json({ error: t(c, 'api.one_or_more_petition_assignments_are_invalid') }, 422)
     }
   }
 
@@ -994,7 +995,7 @@ adminRoutes.put('/users/:id', async (c) => {
   })
   const effectivePetitionIds = parsed.data.petitionIds ?? currentAssignments.map((entry) => entry.petitionId)
   if (nextRole !== 'admin' && effectivePetitionIds.length === 0) {
-    return c.json({ error: 'Organizer and reader users must be assigned to at least one petition' }, 422)
+    return c.json({ error: t(c, 'api.organizer_and_reader_users_must_be_assigned_to_at_least_one_petition') }, 422)
   }
 
   await prisma.$transaction(async (tx) => {
@@ -1042,7 +1043,7 @@ adminRoutes.put('/users/:id', async (c) => {
       },
     },
   })
-  if (!updated) return c.json({ error: 'Not found' }, 404)
+  if (!updated) return c.json({ error: t(c, 'api.not_found') }, 404)
 
   await createAuditLog('user.updated', 'User', targetUserId, actorUser.userId, {
     role: updated?.role,
@@ -1061,13 +1062,13 @@ adminRoutes.put('/users/:id', async (c) => {
 
 adminRoutes.delete('/users/:id', async (c) => {
   const actorUser = c.get('user')
-  if (!isAdmin(actorUser.role)) return c.json({ error: 'Forbidden' }, 403)
+  if (!isAdmin(actorUser.role)) return c.json({ error: t(c, 'api.forbidden') }, 403)
 
   const targetUserId = c.req.param('id')
-  if (targetUserId === actorUser.userId) return c.json({ error: 'You cannot delete your own account' }, 422)
+  if (targetUserId === actorUser.userId) return c.json({ error: t(c, 'api.you_cannot_delete_your_own_account') }, 422)
 
   const existing = await prisma.user.findUnique({ where: { id: targetUserId } })
-  if (!existing) return c.json({ error: 'Not found' }, 404)
+  if (!existing) return c.json({ error: t(c, 'api.not_found') }, 404)
 
   await prisma.$transaction([
     prisma.petitionUserAccess.deleteMany({ where: { userId: targetUserId } }),
@@ -1075,5 +1076,5 @@ adminRoutes.delete('/users/:id', async (c) => {
   ])
 
   await createAuditLog('user.deleted', 'User', targetUserId, actorUser.userId)
-  return c.json({ message: 'User deleted' })
+  return c.json({ message: t(c, 'api.user_deleted') })
 })

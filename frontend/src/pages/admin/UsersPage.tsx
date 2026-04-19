@@ -11,13 +11,14 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
 import { TextField, TextFieldInput, TextFieldLabel } from '@/components/ui/text-field'
+import { t } from '@/lib/i18n'
 
 type RoleOption = { value: AdminUserRole; label: string }
 
 const ROLE_OPTIONS: RoleOption[] = [
-  { value: 'admin', label: 'Admin' },
-  { value: 'organizer', label: 'Organizer' },
-  { value: 'reader', label: 'Reader' },
+  { value: 'admin', label: 'app.role_admin' },
+  { value: 'organizer', label: 'app.role_organizer' },
+  { value: 'reader', label: 'app.role_reader' },
 ]
 
 export default function UsersPage() {
@@ -77,7 +78,7 @@ export default function UsersPage() {
 
     try {
       if (role().value !== 'admin' && selectedPetitionIds().length === 0) {
-        throw new Error('Organizer and reader users must be assigned to at least one petition.')
+        throw new Error(t('app.organizer_and_reader_users_must_be_assigned_to_at_least_one_petition'))
       }
 
       const payload = {
@@ -89,22 +90,22 @@ export default function UsersPage() {
 
       if (editUserId()) {
         await adminApi.updateUser(token, editUserId()!, payload)
-        setSuccess('User updated successfully.')
+        setSuccess(t('app.user_updated_successfully'))
       } else {
-        if (!password()) throw new Error('Password is required for new users.')
+        if (!password()) throw new Error(t('app.password_is_required_for_new_users'))
         await adminApi.createUser(token, {
           email: payload.email,
           password: payload.password!,
           role: payload.role,
           petitionIds: payload.petitionIds,
         })
-        setSuccess('User created successfully.')
+        setSuccess(t('app.user_created_successfully'))
       }
 
       resetForm()
       refetchUsers()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to save user')
+      setError(err instanceof Error ? err.message : t('app.failed_to_save_user'))
     } finally {
       setSubmitting(false)
     }
@@ -117,10 +118,10 @@ export default function UsersPage() {
     setSuccess(null)
     try {
       await adminApi.deleteUser(token, userId)
-      setSuccess('User deleted successfully.')
+      setSuccess(t('app.user_deleted_successfully'))
       refetchUsers()
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to delete user')
+      setError(err instanceof Error ? err.message : t('app.failed_to_delete_user'))
     } finally {
       setDeleteTargetId(null)
     }
@@ -129,14 +130,14 @@ export default function UsersPage() {
   if (!isAdmin()) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>Only admins can manage users.</AlertDescription>
+        <AlertDescription>{t('app.only_admins_can_manage_users')}</AlertDescription>
       </Alert>
     )
   }
 
   return (
     <div class="space-y-6">
-      <h1 class="text-2xl font-bold">Users</h1>
+      <h1 class="text-2xl font-bold">{t('app.users')}</h1>
 
       <Show when={error()}>
         <Alert variant="destructive">
@@ -151,13 +152,13 @@ export default function UsersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>{editUserId() ? 'Edit user' : 'Create user'}</CardTitle>
+          <CardTitle>{editUserId() ? t('app.edit_user') : t('app.create_user')}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
               <TextField>
-                <TextFieldLabel>Email</TextFieldLabel>
+                <TextFieldLabel>{t('app.email')}</TextFieldLabel>
                 <TextFieldInput
                   type="email"
                   required
@@ -168,7 +169,7 @@ export default function UsersPage() {
 
               <TextField>
                 <TextFieldLabel>
-                  {editUserId() ? 'Password (optional, min 12 chars)' : 'Password (min 12 chars)'}
+                  {editUserId() ? t('app.password_optional_min_12_chars') : t('app.password_min_12_chars')}
                 </TextFieldLabel>
                 <TextFieldInput
                   type="password"
@@ -181,17 +182,17 @@ export default function UsersPage() {
             </div>
 
             <div class="space-y-1">
-              <label class="text-sm font-medium">Role</label>
+              <label class="text-sm font-medium">{t('app.role')}</label>
               <Select
                 options={ROLE_OPTIONS}
                 optionValue="value"
                 optionTextValue="label"
                 value={role()}
                 onChange={(opt) => { if (opt) setRole(opt) }}
-                itemComponent={(p) => <SelectItem item={p.item}>{p.item.rawValue.label}</SelectItem>}
+                itemComponent={(p) => <SelectItem item={p.item}>{t(p.item.rawValue.label)}</SelectItem>}
               >
                 <SelectTrigger class="w-[240px]">
-                  <SelectValue<RoleOption>>{(s) => s.selectedOption().label}</SelectValue>
+                  <SelectValue<RoleOption>>{(s) => t(s.selectedOption().label)}</SelectValue>
                 </SelectTrigger>
                 <SelectContent />
               </Select>
@@ -199,7 +200,7 @@ export default function UsersPage() {
 
             <Show when={role().value !== 'admin'}>
               <div class="space-y-2">
-                <p class="text-sm font-medium">Assigned petitions</p>
+                <p class="text-sm font-medium">{t('app.assigned_petitions')}</p>
                 <div class="grid grid-cols-2 gap-2">
                   <For each={petitions()?.petitions ?? []}>
                     {(petition) => {
@@ -221,10 +222,10 @@ export default function UsersPage() {
 
             <div class="flex gap-2">
               <Button type="submit" disabled={submitting()}>
-                {submitting() ? 'Saving…' : editUserId() ? 'Save user' : 'Create user'}
+                {submitting() ? t('app.saving') : editUserId() ? t('app.save_user') : t('app.create_user')}
               </Button>
               <Show when={editUserId()}>
-                <Button type="button" variant="outline" onClick={resetForm}>Cancel edit</Button>
+                <Button type="button" variant="outline" onClick={resetForm}>{t('app.cancel_edit')}</Button>
               </Show>
             </div>
           </form>
@@ -233,17 +234,17 @@ export default function UsersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Existing users</CardTitle>
+          <CardTitle>{t('app.existing_users')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Assigned petitions</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t('app.email')}</TableHead>
+                <TableHead>{t('app.role')}</TableHead>
+                <TableHead>{t('app.assigned_petitions')}</TableHead>
+                <TableHead>{t('app.created')}</TableHead>
+                <TableHead>{t('app.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -254,8 +255,8 @@ export default function UsersPage() {
                     <TableCell class="capitalize">{user.role}</TableCell>
                     <TableCell class="text-sm text-muted-foreground">
                       {user.role === 'admin'
-                        ? 'All petitions'
-                        : user.petitions.map((p) => p.title).join(', ') || 'None assigned'}
+                        ? t('app.all_petitions')
+                        : user.petitions.map((p) => p.title).join(', ') || t('app.none_assigned')}
                     </TableCell>
                     <TableCell class="text-sm text-muted-foreground">
                       {new Date(user.createdAt).toLocaleDateString()}
@@ -263,10 +264,10 @@ export default function UsersPage() {
                     <TableCell>
                       <div class="flex gap-2">
                         <Button size="sm" variant="outline" onClick={() => startEdit(user.id)}>
-                          Edit
+                          {t('app.edit')}
                         </Button>
                         <Button size="sm" variant="destructive" onClick={() => setDeleteTargetId(user.id)}>
-                          Delete
+                          {t('app.delete')}
                         </Button>
                       </div>
                     </TableCell>
@@ -281,9 +282,9 @@ export default function UsersPage() {
       <ConfirmDialog
         open={deleteTargetId() !== null}
         onOpenChange={(open) => { if (!open) setDeleteTargetId(null) }}
-        title="Delete user"
-        description="Delete this user account? This cannot be undone."
-        confirmLabel="Delete"
+        title={t('app.delete_user')}
+        description={t('app.delete_this_user_account_this_cannot_be_undone')}
+        confirmLabel={t('app.delete')}
         variant="destructive"
         onConfirm={handleDelete}
       />

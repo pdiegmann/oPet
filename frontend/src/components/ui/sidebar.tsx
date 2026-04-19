@@ -26,6 +26,7 @@ import { Sheet, SheetContent } from "~/components/ui/sheet"
 import { Skeleton } from "~/components/ui/skeleton"
 import { TextField, TextFieldInput } from "~/components/ui/text-field"
 import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip"
+import { t } from "~/lib/i18n"
 
 const MOBILE_BREAKPOINT = 768
 const SIDEBAR_COOKIE_NAME = "sidebar:state"
@@ -284,7 +285,7 @@ const SidebarTrigger = <T extends ValidComponent = "button">(props: SidebarTrigg
         <rect width="18" height="18" x="3" y="3" rx="2" />
         <path d="M9 3v18" />
       </svg>
-      <span class="sr-only">Toggle Sidebar</span>
+      <span class="sr-only">{t('app.toggle_sidebar')}</span>
     </Button>
   )
 }
@@ -296,10 +297,10 @@ const SidebarRail: Component<ComponentProps<"button">> = (props) => {
   return (
     <button
       data-sidebar="rail"
-      aria-label="Toggle Sidebar"
+      aria-label={t('app.toggle_sidebar')}
       tabIndex={-1}
       onClick={toggleSidebar}
-      title="Toggle Sidebar"
+      title={t('app.toggle_sidebar')}
       class={cn(
         "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex",
         "[[data-side=left]_&]:cursor-w-resize [[data-side=right]_&]:cursor-e-resize",

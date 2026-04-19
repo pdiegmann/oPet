@@ -5,12 +5,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { t } from '@/lib/i18n'
 
 export default function BackupPage() {
   if (!isAdmin()) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>Only admins can create or restore backups.</AlertDescription>
+        <AlertDescription>{t('app.only_admins_can_create_or_restore_backups')}</AlertDescription>
       </Alert>
     )
   }
@@ -30,9 +31,9 @@ export default function BackupPage() {
     setBackupLoading(true)
     try {
       await adminApi.backup(token)
-      setSuccess('Backup downloaded successfully.')
+      setSuccess(t('app.backup_downloaded_successfully'))
     } catch {
-      setError('Backup failed. Please try again.')
+      setError(t('app.backup_failed_please_try_again'))
     } finally {
       setBackupLoading(false)
     }
@@ -53,10 +54,13 @@ export default function BackupPage() {
     try {
       const result = await adminApi.restore(token, file)
       setSuccess(
-        `Restore complete — ${result.restoredPetitions} petition(s) and ${result.restoredSignatures} signature(s) restored.`,
+        t('app.restore_complete_var_petition_s_and_var_signature_s_restored', {
+          petitions: result.restoredPetitions,
+          signatures: result.restoredSignatures,
+        }),
       )
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Restore failed. Please check the backup file and try again.')
+      setError(err instanceof Error ? err.message : t('app.restore_failed_please_check_the_backup_file_and_try_again'))
     } finally {
       setRestoreLoading(false)
     }
@@ -67,9 +71,9 @@ export default function BackupPage() {
       <ConfirmDialog
         open={showRestoreConfirm()}
         onOpenChange={setShowRestoreConfirm}
-        title="Restore from backup?"
-        description="This will add or overwrite petitions and signatures from the backup file. No data will be deleted."
-        confirmLabel="Restore"
+        title={t('app.restore_from_backup_2')}
+        description={t('app.this_will_add_or_overwrite_petitions_and_signatures_from_the_backup_fi')}
+        confirmLabel={t('app.restore')}
         onConfirm={() => {
           const f = pendingFile()
           if (f) doRestore(f)
@@ -77,7 +81,7 @@ export default function BackupPage() {
       />
 
       <div class="max-w-lg space-y-4">
-        <h1 class="text-2xl font-bold">Backup &amp; Restore</h1>
+        <h1 class="text-2xl font-bold">{t('app.backup_restore')}</h1>
 
         <Show when={error()}>
           <Alert variant="destructive">
@@ -93,14 +97,14 @@ export default function BackupPage() {
         {/* Backup */}
         <Card>
           <CardHeader>
-            <CardTitle>Create Backup</CardTitle>
+            <CardTitle>{t('app.create_backup')}</CardTitle>
           </CardHeader>
           <CardContent class="space-y-3">
             <p class="text-sm text-muted-foreground">
-              Download a full JSON backup of all petitions and their signatures.
+              {t('app.download_a_full_json_backup_of_all_petitions_and_their_signatures')}
             </p>
             <Button onClick={handleBackup} disabled={backupLoading()}>
-              {backupLoading() ? 'Creating backup…' : 'Download Backup'}
+              {backupLoading() ? t('app.creating_backup') : t('app.download_backup')}
             </Button>
           </CardContent>
         </Card>
@@ -108,17 +112,16 @@ export default function BackupPage() {
         {/* Restore */}
         <Card>
           <CardHeader>
-            <CardTitle>Restore from Backup</CardTitle>
+            <CardTitle>{t('app.restore_from_backup')}</CardTitle>
           </CardHeader>
           <CardContent class="space-y-3">
             <p class="text-sm text-muted-foreground">
-              Upload a previously downloaded backup file. Existing petitions and signatures will be
-              updated; missing ones will be added. No data will be deleted.
+              {t('app.upload_a_previously_downloaded_backup_file_existing_petitions_and_sign')}
             </p>
             <form onSubmit={handleRestore}>
               <div class="space-y-1">
                 <label class="text-sm font-medium" for="backupFile">
-                  Backup file (.json)
+                  {t('app.backup_file_json')}
                 </label>
                 <input
                   id="backupFile"
@@ -129,7 +132,7 @@ export default function BackupPage() {
                 />
               </div>
               <Button type="submit" variant="secondary" disabled={restoreLoading() || !restoreFile()} class="mt-3">
-                {restoreLoading() ? 'Restoring…' : 'Restore Backup'}
+                {restoreLoading() ? t('app.restoring') : t('app.restore_backup')}
               </Button>
             </form>
           </CardContent>

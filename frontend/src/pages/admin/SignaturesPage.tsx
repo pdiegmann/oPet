@@ -11,17 +11,18 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { t } from '@/lib/i18n'
 
 const VERIFIED_OPTIONS = [
-  { value: 'all', label: 'All (verified & unverified)' },
-  { value: 'true', label: 'Verified only' },
-  { value: 'false', label: 'Unverified only' },
+  { value: 'all', label: 'app.filter_all_verified_unverified' },
+  { value: 'true', label: 'app.filter_verified_only' },
+  { value: 'false', label: 'app.filter_unverified_only' },
 ]
 
 const WITHDRAWN_OPTIONS = [
-  { value: 'false', label: 'Active only' },
-  { value: 'true', label: 'Withdrawn only' },
-  { value: 'all', label: 'All' },
+  { value: 'false', label: 'app.filter_active_only' },
+  { value: 'true', label: 'app.filter_withdrawn_only' },
+  { value: 'all', label: 'app.filter_all' },
 ]
 
 type FilterOption = { value: string; label: string }
@@ -63,7 +64,7 @@ export default function SignaturesPage() {
         country: undefined,
       })
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Export failed')
+      setError(e instanceof Error ? e.message : t('app.export_failed'))
     } finally {
       setExporting(false)
     }
@@ -71,7 +72,7 @@ export default function SignaturesPage() {
 
   return (
     <div>
-      <h1 class="page-title">Signatures</h1>
+      <h1 class="page-title">{t('app.signatures')}</h1>
 
       {/* Filters */}
       <div class="flex flex-wrap gap-3 mb-5 items-center">
@@ -81,10 +82,10 @@ export default function SignaturesPage() {
           optionTextValue="label"
           value={verifiedFilter()}
           onChange={(opt) => { if (opt) { setVerifiedFilter(opt); setPage(1) } }}
-          itemComponent={(p) => <SelectItem item={p.item}>{p.item.rawValue.label}</SelectItem>}
+          itemComponent={(p) => <SelectItem item={p.item}>{t(p.item.rawValue.label)}</SelectItem>}
         >
           <SelectTrigger class="w-[250px]">
-            <SelectValue<FilterOption>>{(s) => s.selectedOption()?.label ?? 'All (verified & unverified)'}</SelectValue>
+            <SelectValue<FilterOption>>{(s) => t(s.selectedOption()?.label ?? 'app.filter_all_verified_unverified')}</SelectValue>
           </SelectTrigger>
           <SelectContent />
         </Select>
@@ -95,10 +96,10 @@ export default function SignaturesPage() {
           optionTextValue="label"
           value={withdrawnFilter()}
           onChange={(opt) => { if (opt) { setWithdrawnFilter(opt); setPage(1) } }}
-          itemComponent={(p) => <SelectItem item={p.item}>{p.item.rawValue.label}</SelectItem>}
+          itemComponent={(p) => <SelectItem item={p.item}>{t(p.item.rawValue.label)}</SelectItem>}
         >
           <SelectTrigger class="w-[180px]">
-            <SelectValue<FilterOption>>{(s) => s.selectedOption()?.label ?? 'Active only'}</SelectValue>
+            <SelectValue<FilterOption>>{(s) => t(s.selectedOption()?.label ?? 'app.filter_active_only')}</SelectValue>
           </SelectTrigger>
           <SelectContent />
         </Select>
@@ -108,7 +109,7 @@ export default function SignaturesPage() {
           onClick={handleQuickExport}
           disabled={exporting()}
         >
-          {exporting() ? 'Exporting…' : 'Export CSV'}
+          {exporting() ? t('app.exporting') : t('app.export_csv')}
         </Button>
       </div>
 
@@ -122,7 +123,7 @@ export default function SignaturesPage() {
 
       <Show when={data.error}>
         <Alert variant="destructive">
-          <AlertDescription>Failed to load signatures.</AlertDescription>
+          <AlertDescription>{t('app.failed_to_load_signatures')}</AlertDescription>
         </Alert>
       </Show>
 
@@ -138,19 +139,19 @@ export default function SignaturesPage() {
         {(d) => (
           <>
             <p class="text-sm text-muted-foreground mb-3">
-              {d().total.toLocaleString()} signature(s) found
+              {t('app.var_signature_s_found', { count: d().total.toLocaleString() })}
             </p>
 
             <Card class="p-0 overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead>{t('app.name')}</TableHead>
+                    <TableHead>{t('app.email')}</TableHead>
+                    <TableHead>{t('app.location')}</TableHead>
+                    <TableHead>{t('app.status_2')}</TableHead>
+                    <TableHead>{t('app.date')}</TableHead>
+                    <TableHead>{t('app.actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -159,7 +160,7 @@ export default function SignaturesPage() {
                     fallback={
                       <TableRow>
                         <TableCell colspan={6} class="text-center text-muted-foreground">
-                          No signatures found
+                          {t('app.no_signatures_found')}
                         </TableCell>
                       </TableRow>
                     }
@@ -170,7 +171,7 @@ export default function SignaturesPage() {
                           <TableCell class="font-medium">{sig.fullName}</TableCell>
                           <TableCell class="text-sm">{sig.email}</TableCell>
                           <TableCell class="text-sm text-muted-foreground">
-                            {[sig.city, sig.country].filter(Boolean).join(', ') || '—'}
+                            {[sig.city, sig.country].filter(Boolean).join(', ') || t('app.text')}
                           </TableCell>
                           <TableCell>
                             <StatusBadge status={deriveSigStatus(sig)} type="signature" />
@@ -185,7 +186,7 @@ export default function SignaturesPage() {
                                 variant="destructive"
                                 onClick={() => setRemoveTarget(sig)}
                               >
-                                Remove
+                                {t('app.remove')}
                               </Button>
                             </Show>
                           </TableCell>
@@ -209,9 +210,9 @@ export default function SignaturesPage() {
       <ConfirmDialog
         open={removeTarget() !== null}
         onOpenChange={(o) => { if (!o) setRemoveTarget(null) }}
-        title="Remove signature"
-        description={`Remove signature from ${removeTarget()?.fullName ?? ''}?`}
-        confirmLabel="Remove"
+        title={t('app.remove_signature')}
+        description={t('app.remove_signature_from_var', { name: removeTarget()?.fullName ?? '' })}
+        confirmLabel={t('app.remove')}
         variant="destructive"
         onConfirm={async () => {
           const sig = removeTarget()
@@ -220,7 +221,7 @@ export default function SignaturesPage() {
             await adminApi.removeSignature(token, sig.id)
             refetch()
           } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : 'Failed to remove signature')
+            setError(e instanceof Error ? e.message : t('app.failed_to_remove_signature'))
           }
         }}
       />

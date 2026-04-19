@@ -1,3 +1,4 @@
+import { getCurrentLocale, t } from '@/lib/i18n.js'
 const API_URL = import.meta.env.VITE_API_URL || ''
 
 async function request<T>(
@@ -7,6 +8,7 @@ async function request<T>(
 ): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Accept-Language': getCurrentLocale(),
     ...(options.headers as Record<string, string> | undefined),
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
@@ -15,7 +17,7 @@ async function request<T>(
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({ error: res.statusText }))
-    throw new ApiError(res.status, body.error || 'Request failed', body)
+    throw new ApiError(res.status, body.error || t('app.request_failed'), body)
   }
 
   const contentType = res.headers.get('content-type') ?? ''
@@ -98,9 +100,9 @@ export interface SignPayload {
 export const api = {
   getPetitions: (params?: { search?: string; page?: number; limit?: number }) => {
     const q = new URLSearchParams()
-    if (params?.search) q.set('search', params.search)
-    if (params?.page) q.set('page', String(params.page))
-    if (params?.limit) q.set('limit', String(params.limit))
+    if (params?.search) q.set('app.search', params.search)
+    if (params?.page) q.set('app.page', String(params.page))
+    if (params?.limit) q.set('app.limit', String(params.limit))
     return request<{ petitions: Petition[]; total: number; page: number; totalPages: number }>(
       `/api/petitions?${q}`,
     )
@@ -110,7 +112,7 @@ export const api = {
 
   getPetitionUpdates: (slug: string, params?: { includeVersionHistory?: boolean }) => {
     const q = new URLSearchParams()
-    if (params?.includeVersionHistory) q.set('includeVersionHistory', 'true')
+    if (params?.includeVersionHistory) q.set('app.includeversionhistory', 'true')
     return request<{ updates: PublicPetitionUpdate[] }>(`/api/petitions/${slug}/updates?${q}`)
   },
 
@@ -217,9 +219,9 @@ export const adminApi = {
 
   getPetitions: (token: string, params?: { page?: number; limit?: number; status?: string }) => {
     const q = new URLSearchParams()
-    if (params?.page) q.set('page', String(params.page))
-    if (params?.limit) q.set('limit', String(params.limit))
-    if (params?.status) q.set('status', params.status)
+    if (params?.page) q.set('app.page', String(params.page))
+    if (params?.limit) q.set('app.limit', String(params.limit))
+    if (params?.status) q.set('app.status', params.status)
     return request<{ petitions: AdminPetition[]; total: number; totalPages: number }>(
       `/api/admin/petitions?${q}`,
       {},
@@ -297,9 +299,9 @@ export const adminApi = {
     params?: { page?: number; verified?: boolean; withdrawn?: boolean },
   ) => {
     const q = new URLSearchParams()
-    if (params?.page) q.set('page', String(params.page))
-    if (params?.verified !== undefined) q.set('verified', String(params.verified))
-    if (params?.withdrawn !== undefined) q.set('withdrawn', String(params.withdrawn))
+    if (params?.page) q.set('app.page', String(params.page))
+    if (params?.verified !== undefined) q.set('app.verified', String(params.verified))
+    if (params?.withdrawn !== undefined) q.set('app.withdrawn', String(params.withdrawn))
     return request<{ signatures: Signature[]; total: number; totalPages: number }>(
       `/api/admin/petitions/${petitionId}/signatures?${q}`,
       {},
@@ -317,10 +319,14 @@ export const adminApi = {
   ) => {
     const res = await fetch(`${API_URL}/api/admin/export`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept-Language': getCurrentLocale(),
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify({ format, ...filters }),
     })
-    if (!res.ok) throw new ApiError(res.status, 'Export failed')
+    if (!res.ok) throw new ApiError(res.status, t('app.export_failed'))
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -353,12 +359,12 @@ export const adminApi = {
 
   backup: async (token: string) => {
     const res = await fetch(`${API_URL}/api/admin/backup`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${token}`, 'Accept-Language': getCurrentLocale() },
     })
-    if (!res.ok) throw new ApiError(res.status, 'Backup failed')
+    if (!res.ok) throw new ApiError(res.status, t('app.backup_failed'))
     const disposition = res.headers.get('content-disposition') ?? ''
     const match = disposition.match(/filename="([^"]+)"/)
-    const filename = match ? match[1] : `opet-backup-${new Date().toISOString().split('T')[0]}.json`
+    const filename = match ? match[1] : `opet-backup-${new Date().toISOString().split('app.t')[0]}.json`
     const blob = await res.blob()
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -374,7 +380,7 @@ export const adminApi = {
     try {
       data = JSON.parse(text)
     } catch {
-      throw new Error('Invalid JSON format in backup file.')
+      throw new Error(t('app.invalid_json_format_in_backup_file'))
     }
     return request<{ message: string; restoredPetitions: number; restoredSignatures: number }>(
       '/api/admin/restore',

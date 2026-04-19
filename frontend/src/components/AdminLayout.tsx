@@ -2,6 +2,7 @@ import { JSX, Show, For, createEffect, createMemo, createResource, createSignal 
 import { A, useLocation, useNavigate } from '@solidjs/router'
 import { adminApi, AdminPetition } from '@/lib/api.js'
 import { getToken, getUser, isAdmin, isAuthenticated, logout } from '@/stores/auth.js'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
 import { Button } from '@/components/ui/button'
 import {
   Breadcrumb,
@@ -10,6 +11,8 @@ import {
   BreadcrumbList,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
+import { t } from '@/lib/i18n'
+import { HandFist } from 'lucide-solid'
 
 interface AdminLayoutProps {
   children?: JSX.Element
@@ -94,62 +97,62 @@ export default function AdminLayout(props: AdminLayoutProps) {
     if (!id) return undefined
 
     const petition = sidebarPetitions().find((item) => item.id === id)
-    return petition?.title ?? `Petition ${id.slice(0, 8)}`
+    return petition?.title ?? t('app.petition_var', { id: id.slice(0, 8) })
   })
 
   const breadcrumbs = createMemo<BreadcrumbEntry[]>(() => {
     const path = location.pathname
-    const entries: BreadcrumbEntry[] = [{ label: 'Admin', href: '/admin/dashboard' }]
+    const entries: BreadcrumbEntry[] = [{ label: t('app.admin'), href: '/admin/dashboard' }]
 
     if (path === '/admin/dashboard') {
-      entries.push({ label: 'Dashboard' })
+      entries.push({ label: t('app.dashboard') })
       return entries
     }
 
     if (path.startsWith('/admin/petitions')) {
       if (path === '/admin/petitions') {
-        entries.push({ label: 'Petitions' })
+        entries.push({ label: t('app.petitions') })
         return entries
       }
 
-      entries.push({ label: 'Petitions', href: '/admin/petitions' })
+      entries.push({ label: t('app.petitions'), href: '/admin/petitions' })
 
       if (path === '/admin/petitions/new') {
-        entries.push({ label: 'New' })
+        entries.push({ label: t('app.new') })
         return entries
       }
 
       const id = activePetitionId()
       if (id) {
         entries.push({
-          label: activePetitionTitle() ?? `Petition ${id.slice(0, 8)}`,
+          label: activePetitionTitle() ?? t('app.petition_var', { id: id.slice(0, 8) }),
           href: `/admin/petitions/${id}/edit`,
         })
       }
 
       if (path.endsWith('/signatures')) {
-        entries.push({ label: 'Signatures' })
+        entries.push({ label: t('app.signatures') })
       } else if (path.endsWith('/updates')) {
-        entries.push({ label: 'Updates' })
+        entries.push({ label: t('app.updates') })
       } else if (path.endsWith('/edit')) {
-        entries.push({ label: 'Edit' })
+        entries.push({ label: t('app.edit') })
       }
 
       return entries
     }
 
     if (path === '/admin/export') {
-      entries.push({ label: 'Export' })
+      entries.push({ label: t('app.export') })
       return entries
     }
 
     if (path === '/admin/backup') {
-      entries.push({ label: 'Backup' })
+      entries.push({ label: t('app.backup') })
       return entries
     }
 
     if (path === '/admin/users') {
-      entries.push({ label: 'Users' })
+      entries.push({ label: t('app.users') })
       return entries
     }
 
@@ -157,10 +160,10 @@ export default function AdminLayout(props: AdminLayoutProps) {
   })
 
   const bottomNavItems = createMemo<[string, string][]>(() => {
-    const items: [string, string][] = [['/admin/export', '📤 Export']]
+    const items: [string, string][] = [['/admin/export', `📤 ${t('app.export')}`]]
     if (isAdmin()) {
-      items.push(['/admin/backup', '💾 Backup'])
-      items.push(['/admin/users', '👤 Users'])
+      items.push(['/admin/backup', `💾 ${t('app.backup')}`])
+      items.push(['/admin/users', `👤 ${t('app.users')}`])
     }
     return items
   })
@@ -171,10 +174,15 @@ export default function AdminLayout(props: AdminLayoutProps) {
   return (
     <Show when={isAuthenticated()} fallback={null}>
       <div class="min-h-screen flex">
-        <aside class="w-[300px] bg-slate-800 text-slate-300 flex flex-col shrink-0">
+        <aside class="w-[320px] bg-slate-800 text-slate-300 flex flex-col shrink-0">
           <div class="px-5 py-6">
             <A href="/admin/dashboard" class="text-xl font-bold text-white no-underline">
-              ✊ oPet Admin
+              <div class="mt-1 inline-block">
+                <HandFist class="mb-1 inline-block" size={24} strokeWidth={1} /> oPet {t('app.admin')} 
+              </div>
+              <div class="inline-block ml-1 float-end">
+                <LanguageSwitcher />
+              </div>
             </A>
           </div>
 
@@ -184,7 +192,7 @@ export default function AdminLayout(props: AdminLayoutProps) {
               class="px-3 py-2 rounded text-slate-300 no-underline text-sm transition-colors hover:bg-white/10"
               activeClass="bg-white/10 text-white"
             >
-              📊 Dashboard
+              📊 {t('app.dashboard')}
             </A>
 
             <div class="mt-1 rounded-md border border-white/10 bg-slate-900/30">
@@ -194,12 +202,12 @@ export default function AdminLayout(props: AdminLayoutProps) {
                   class="flex-1 px-2.5 py-2 rounded text-slate-300 no-underline text-sm transition-colors hover:bg-white/10"
                   activeClass="bg-white/10 text-white"
                 >
-                  📋 Petitions
+                  📋 {t('app.petitions')}
                 </A>
                 <button
                   type="button"
                   class="h-8 w-8 rounded text-slate-300 hover:bg-white/10 hover:text-white"
-                  aria-label={petitionsOpen() ? 'Collapse petitions' : 'Expand petitions'}
+                  aria-label={petitionsOpen() ? t('app.collapse_petitions') : t('app.expand_petitions')}
                   onClick={() => setPetitionsOpen((open) => !open)}
                 >
                   {petitionsOpen() ? '▾' : '▸'}
@@ -210,7 +218,7 @@ export default function AdminLayout(props: AdminLayoutProps) {
                 <div class="px-2 pb-2">
                   <Show
                     when={sidebarPetitions().length > 0}
-                    fallback={<p class="px-2 py-1 text-xs text-slate-400">No petitions yet</p>}
+                    fallback={<p class="px-2 py-1 text-xs text-slate-400">{t('app.no_petitions_yet')}</p>}
                   >
                     <For each={sidebarPetitions()}>
                       {(petition) => (
@@ -233,7 +241,7 @@ export default function AdminLayout(props: AdminLayoutProps) {
                                 'bg-white/10 text-white': location.pathname === `/admin/petitions/${petition.id}/updates`,
                               }}
                             >
-                              Updates
+                              {t('app.updates')}
                             </A>
                             <A
                               href={`/admin/petitions/${petition.id}/signatures`}
@@ -242,7 +250,7 @@ export default function AdminLayout(props: AdminLayoutProps) {
                                 'bg-white/10 text-white': location.pathname === `/admin/petitions/${petition.id}/signatures`,
                               }}
                             >
-                              Signatures
+                              {t('app.signatures')}
                             </A>
                           </div>
                         </div>
@@ -266,15 +274,13 @@ export default function AdminLayout(props: AdminLayoutProps) {
             </For>
           </nav>
 
-          <div class="px-5 pb-4 text-xs text-slate-400">{getUser()?.email}</div>
-
           <div class="px-5 py-4 mt-auto">
             <Button
               variant="ghost"
               class="w-full text-slate-300 hover:text-white hover:bg-white/10"
               onClick={handleLogout}
             >
-              Sign out
+              {t('app.sign_out')}
             </Button>
           </div>
         </aside>

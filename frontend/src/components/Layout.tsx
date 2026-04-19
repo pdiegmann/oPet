@@ -1,5 +1,8 @@
 import { JSX } from 'solid-js'
 import { A } from '@solidjs/router'
+import { LanguageSwitcher } from '@/components/LanguageSwitcher'
+import { t } from '@/lib/i18n'
+import { HandFist } from 'lucide-solid';
 
 interface LayoutProps {
   children?: JSX.Element
@@ -11,13 +14,16 @@ export default function Layout(props: LayoutProps) {
       <header class="bg-card border-b shadow-sm">
         <div class="container mx-auto px-4 py-3 flex items-center justify-between">
           <A href="/" class="text-2xl font-bold text-primary no-underline">
-            ✊ oPet
+             <HandFist class="mb-1 inline-block" size={32} strokeWidth={1} /> oPet
           </A>
-          <nav class="flex gap-4 text-sm">
-            <A href="/" class="hover:text-primary transition-colors" activeClass="text-primary font-medium">Petitions</A>
-            <A href="/privacy" class="hover:text-primary transition-colors">Privacy</A>
-            <A href="/imprint" class="hover:text-primary transition-colors">Imprint</A>
-          </nav>
+          <div class="flex items-center gap-4">
+            <nav class="flex gap-4 text-sm">
+              <A href="/" class="hover:text-primary transition-colors" activeClass="text-primary font-medium">{t('app.petitions')}</A>
+              <A href="/privacy" class="hover:text-primary transition-colors">{t('app.privacy')}</A>
+              <A href="/imprint" class="hover:text-primary transition-colors">{t('app.imprint')}</A>
+            </nav>
+            <LanguageSwitcher />
+          </div>
         </div>
       </header>
 
@@ -27,10 +33,10 @@ export default function Layout(props: LayoutProps) {
 
       <footer class="bg-card border-t py-5 text-center text-sm text-muted-foreground">
         <div class="container mx-auto px-4">
-          &copy; {new Date().getFullYear()} oPet &mdash; Open Petition Platform &mdash;{' '}
-          <A href="/privacy" class="hover:underline">Privacy</A>
+          &copy; {new Date().getFullYear()} oPet &mdash; {t('app.open_petition_platform')} &mdash;{' '}
+          <A href="/privacy" class="hover:underline">{t('app.privacy')}</A>
           {' '}&bull;{' '}
-          <A href="/imprint" class="hover:underline">Imprint</A>
+          <A href="/imprint" class="hover:underline">{t('app.imprint')}</A>
         </div>
       </footer>
     </div>

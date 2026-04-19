@@ -1,4 +1,5 @@
 import type { Context, Next } from 'hono'
+import { t } from '../lib/i18n.js'
 
 interface RateLimitEntry {
   count: number
@@ -34,7 +35,7 @@ export function rateLimit(maxRequests = MAX_REQUESTS, windowMs = WINDOW_MS) {
     if (entry.count > maxRequests) {
       const retryAfter = Math.ceil((entry.resetAt - now) / 1000)
       c.header('Retry-After', String(retryAfter))
-      return c.json({ error: 'Too many requests' }, 429)
+      return c.json({ error: t(c, 'api.too_many_requests') }, 429)
     }
 
     await next()

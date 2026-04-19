@@ -14,15 +14,16 @@ import {
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PaginationControls } from '@/components/PaginationControls'
 import { StatusBadge, type PetitionStatus } from '@/components/StatusBadge'
+import { t } from '@/lib/i18n'
 
 type StatusOpt = { label: string; value: string }
 const STATUS_OPTIONS: StatusOpt[] = [
-  { value: '', label: 'All statuses' },
-  { value: 'draft', label: 'Draft' },
-  { value: 'active', label: 'Active' },
-  { value: 'paused', label: 'Paused' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'archived', label: 'Archived' },
+  { value: '', label: 'app.filter_all_statuses' },
+  { value: 'draft', label: 'app.status_draft' },
+  { value: 'active', label: 'app.status_active' },
+  { value: 'paused', label: 'app.status_paused' },
+  { value: 'completed', label: 'app.status_completed' },
+  { value: 'archived', label: 'app.status_archived' },
 ]
 
 export default function PetitionsPage() {
@@ -45,16 +46,16 @@ export default function PetitionsPage() {
       await adminApi.archivePetition(token, p.id)
       refetch()
     } catch (e: unknown) {
-      setArchiveError(e instanceof Error ? e.message : 'Failed to archive petition')
+      setArchiveError(e instanceof Error ? e.message : t('app.failed_to_archive_petition'))
     }
   }
 
   return (
     <div>
       <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold">Petitions</h1>
+        <h1 class="text-2xl font-bold">{t('app.petitions')}</h1>
         <Show when={isAdmin()}>
-          <Button as={A} href="/admin/petitions/new">+ New petition</Button>
+          <Button as={A} href="/admin/petitions/new">+ {t('app.new_petition')}</Button>
         </Show>
       </div>
 
@@ -72,11 +73,11 @@ export default function PetitionsPage() {
           value={STATUS_OPTIONS.find(o => o.value === statusFilter()) ?? null}
           onChange={(opt) => { setStatusFilter(opt?.value ?? ''); setPage(1) }}
           itemComponent={(props) => (
-            <SelectItem item={props.item}>{props.item.rawValue.label}</SelectItem>
+            <SelectItem item={props.item}>{t(props.item.rawValue.label)}</SelectItem>
           )}
         >
           <SelectTrigger class="w-[180px]">
-            <SelectValue<StatusOpt>>{(state) => state.selectedOption()?.label ?? 'All statuses'}</SelectValue>
+            <SelectValue<StatusOpt>>{(state) => t(state.selectedOption()?.label ?? 'app.filter_all_statuses')}</SelectValue>
           </SelectTrigger>
           <SelectContent />
         </Select>
@@ -88,7 +89,7 @@ export default function PetitionsPage() {
 
       <Show when={data.error}>
         <Alert variant="destructive">
-          <AlertDescription>Failed to load petitions.</AlertDescription>
+          <AlertDescription>{t('app.failed_to_load_petitions')}</AlertDescription>
         </Alert>
       </Show>
 
@@ -98,11 +99,11 @@ export default function PetitionsPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Signatures</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{t('app.title')}</TableHead>
+                  <TableHead>{t('app.status_2')}</TableHead>
+                  <TableHead>{t('app.signatures')}</TableHead>
+                  <TableHead>{t('app.created')}</TableHead>
+                  <TableHead>{t('app.actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -111,7 +112,7 @@ export default function PetitionsPage() {
                   fallback={
                     <TableRow>
                       <TableCell colspan={5} class="text-center text-muted-foreground py-8">
-                        No petitions found
+                        {t('app.no_petitions_found')}
                       </TableCell>
                     </TableRow>
                   }
@@ -136,14 +137,14 @@ export default function PetitionsPage() {
                           <div class="flex gap-1.5">
                             <Show when={canWritePetitions()}>
                               <Button as={A} href={`/admin/petitions/${p.id}/edit`} variant="outline" size="sm">
-                                Edit
+                                {t('app.edit')}
                               </Button>
                               <Button as={A} href={`/admin/petitions/${p.id}/updates`} variant="outline" size="sm">
-                                Updates
+                                {t('app.updates')}
                               </Button>
                             </Show>
                             <Button as={A} href={`/admin/petitions/${p.id}/signatures`} variant="outline" size="sm">
-                              Signatures
+                              {t('app.signatures')}
                             </Button>
                             <Show when={canWritePetitions() && p.status !== 'archived'}>
                               <Button
@@ -151,7 +152,7 @@ export default function PetitionsPage() {
                                 size="sm"
                                 onClick={() => setArchiveTarget(p)}
                               >
-                                Archive
+                                {t('app.archive')}
                               </Button>
                             </Show>
                           </div>
@@ -175,9 +176,9 @@ export default function PetitionsPage() {
       <ConfirmDialog
         open={archiveTarget() !== null}
         onOpenChange={(open) => { if (!open) setArchiveTarget(null) }}
-        title="Archive petition"
-        description={`Archive "${archiveTarget()?.title}"? It will no longer accept signatures.`}
-        confirmLabel="Archive"
+        title={t('app.archive_petition')}
+        description={t('app.archive_var_it_will_no_longer_accept_signatures', { title: archiveTarget()?.title ?? '' })}
+        confirmLabel={t('app.archive')}
         variant="destructive"
         onConfirm={handleArchive}
       />

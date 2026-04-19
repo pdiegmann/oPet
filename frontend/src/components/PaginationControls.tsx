@@ -1,5 +1,6 @@
 import { Show } from 'solid-js'
 import { Button } from '@/components/ui/button'
+import { t } from '@/lib/i18n'
 
 interface PaginationControlsProps {
   page: number
@@ -17,10 +18,10 @@ export function PaginationControls(props: PaginationControlsProps) {
           disabled={props.page <= 1}
           onClick={() => props.onPageChange(props.page - 1)}
         >
-          ← Prev
+          ← {t('app.prev')}
         </Button>
         <span class="text-sm text-muted-foreground">
-          Page {props.page} of {props.totalPages}
+          {t('app.page_var_of_var', { page: props.page, totalPages: props.totalPages })}
         </span>
         <Button
           variant="outline"
@@ -28,7 +29,7 @@ export function PaginationControls(props: PaginationControlsProps) {
           disabled={props.page >= props.totalPages}
           onClick={() => props.onPageChange(props.page + 1)}
         >
-          Next →
+          {t('app.next')} →
         </Button>
       </div>
     </Show>

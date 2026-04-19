@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   TextField, TextFieldDescription, TextFieldInput, TextFieldLabel,
 } from '@/components/ui/text-field'
+import { t } from '@/lib/i18n'
 
 interface PetitionFormData {
   slug: string
@@ -49,11 +50,11 @@ const emptyForm = (): PetitionFormData => ({
 
 type StatusOpt = { label: string; value: string }
 const STATUS_OPTIONS: StatusOpt[] = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'active', label: 'Active' },
-  { value: 'paused', label: 'Paused' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'archived', label: 'Archived' },
+  { value: 'draft', label: 'app.status_draft' },
+  { value: 'active', label: 'app.status_active' },
+  { value: 'paused', label: 'app.status_paused' },
+  { value: 'completed', label: 'app.status_completed' },
+  { value: 'archived', label: 'app.status_archived' },
 ]
 
 export default function PetitionEditorPage() {
@@ -70,7 +71,7 @@ export default function PetitionEditorPage() {
   if (!canWritePetitions()) {
     return (
       <Alert variant="destructive" class="mb-4">
-        <AlertDescription>You do not have permission to edit petitions.</AlertDescription>
+        <AlertDescription>{t('app.you_do_not_have_permission_to_edit_petitions')}</AlertDescription>
       </Alert>
     )
   }
@@ -78,7 +79,7 @@ export default function PetitionEditorPage() {
   if (!isEdit && !isAdmin()) {
     return (
       <Alert variant="destructive" class="mb-4">
-        <AlertDescription>Only admins can create petitions.</AlertDescription>
+        <AlertDescription>{t('app.only_admins_can_create_petitions')}</AlertDescription>
       </Alert>
     )
   }
@@ -144,13 +145,13 @@ export default function PetitionEditorPage() {
       }
       if (isEdit) {
         await adminApi.updatePetition(token, params.id!, payload)
-        setSuccess('Petition updated successfully.')
+        setSuccess(t('app.petition_updated_successfully'))
       } else {
         const created = await adminApi.createPetition(token, payload)
         navigate(`/admin/petitions/${created.id}/edit`)
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to save petition')
+      setError(err instanceof Error ? err.message : t('app.failed_to_save_petition'))
     } finally {
       setSaving(false)
     }
@@ -159,16 +160,16 @@ export default function PetitionEditorPage() {
   return (
     <div class="max-w-3xl">
       <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold">{isEdit ? 'Edit petition' : 'New petition'}</h1>
+        <h1 class="text-2xl font-bold">{isEdit ? t('app.edit_petition') : t('app.new_petition')}</h1>
         <div class="flex items-center gap-2">
           <Show when={isEdit && params.id}>
             <Button variant="outline" size="sm" as="a" href={`/admin/petitions/${params.id}/updates`}>
-              Manage updates
+              {t('app.manage_updates')}
             </Button>
           </Show>
           <Show when={isEdit && existing()}>
             <Button variant="outline" size="sm" as="a" href={`/petition/${existing()?.slug}`} target="_blank">
-              View public page ↗
+              {t('app.view_public_page')} ↗
             </Button>
           </Show>
         </div>
@@ -191,10 +192,10 @@ export default function PetitionEditorPage() {
 
       <form onSubmit={handleSubmit} class="space-y-4">
         <Card>
-          <CardHeader><CardTitle>Basic information</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t('app.basic_information')}</CardTitle></CardHeader>
           <CardContent class="space-y-4">
             <TextField>
-              <TextFieldLabel>Title *</TextFieldLabel>
+              <TextFieldLabel>{t('app.title_2')}</TextFieldLabel>
               <TextFieldInput
                 type="text"
                 required
@@ -207,7 +208,7 @@ export default function PetitionEditorPage() {
             </TextField>
 
             <TextField>
-              <TextFieldLabel>Slug *</TextFieldLabel>
+              <TextFieldLabel>{t('app.slug')}</TextFieldLabel>
               <TextFieldInput
                 type="text"
                 required
@@ -215,27 +216,27 @@ export default function PetitionEditorPage() {
                 value={form().slug}
                 onInput={(e) => update('slug', e.currentTarget.value)}
               />
-              <TextFieldDescription>URL: /petition/{form().slug || '…'}</TextFieldDescription>
+              <TextFieldDescription>{t('app.url')}: /petition/{form().slug || '…'}</TextFieldDescription>
             </TextField>
 
             <div class="flex flex-col gap-1">
-              <label class="text-sm font-medium">Summary * (shown in listing)</label>
+              <label class="text-sm font-medium">{t('app.summary_shown_in_listing')}</label>
               <QuillEditor
                 id="summary"
                 value={form().summary}
                 onValueChange={(val) => update('summary', val)}
-                placeholder="Short summary shown in the petition listing…"
+                placeholder={t('app.short_summary_shown_in_the_petition_listing')}
                 minHeight="5rem"
               />
             </div>
 
             <div class="flex flex-col gap-1">
-              <label class="text-sm font-medium">Body * (full petition text)</label>
+              <label class="text-sm font-medium">{t('app.body_full_petition_text')}</label>
               <QuillEditor
                 id="body"
                 value={form().body}
                 onValueChange={(val) => update('body', val)}
-                placeholder="Full petition text…"
+                placeholder={t('app.full_petition_text')}
                 minHeight="14rem"
               />
             </div>
@@ -243,10 +244,10 @@ export default function PetitionEditorPage() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Recipient</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t('app.recipient')}</CardTitle></CardHeader>
           <CardContent class="space-y-4">
             <TextField>
-              <TextFieldLabel>Recipient name *</TextFieldLabel>
+              <TextFieldLabel>{t('app.recipient_name')}</TextFieldLabel>
               <TextFieldInput
                 type="text"
                 required
@@ -256,12 +257,12 @@ export default function PetitionEditorPage() {
             </TextField>
 
             <div class="flex flex-col gap-1">
-              <label class="text-sm font-medium">Recipient description</label>
+              <label class="text-sm font-medium">{t('app.recipient_description')}</label>
               <QuillEditor
                 id="recipientDescription"
                 value={form().recipientDescription}
                 onValueChange={(val) => update('recipientDescription', val)}
-                placeholder="Brief description of the petition recipient…"
+                placeholder={t('app.brief_description_of_the_petition_recipient')}
                 minHeight="5rem"
               />
             </div>
@@ -269,11 +270,11 @@ export default function PetitionEditorPage() {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle>Settings</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t('app.settings')}</CardTitle></CardHeader>
           <CardContent class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
               <div class="flex flex-col gap-1">
-                <label class="text-sm font-medium">Status</label>
+                <label class="text-sm font-medium">{t('app.status_2')}</label>
                 <Select
                   options={STATUS_OPTIONS}
                   optionValue="value"
@@ -281,18 +282,18 @@ export default function PetitionEditorPage() {
                   value={STATUS_OPTIONS.find(o => o.value === form().status) ?? null}
                   onChange={(opt) => update('status', opt?.value ?? 'draft')}
                   itemComponent={(props) => (
-                    <SelectItem item={props.item}>{props.item.rawValue.label}</SelectItem>
+                    <SelectItem item={props.item}>{t(props.item.rawValue.label)}</SelectItem>
                   )}
                 >
                   <SelectTrigger>
-                    <SelectValue<StatusOpt>>{(state) => state.selectedOption()?.label}</SelectValue>
+                    <SelectValue<StatusOpt>>{(state) => t(state.selectedOption()?.label ?? 'app.status_draft')}</SelectValue>
                   </SelectTrigger>
                   <SelectContent />
                 </Select>
               </div>
 
               <TextField>
-                <TextFieldLabel>Signature goal</TextFieldLabel>
+                <TextFieldLabel>{t('app.signature_goal')}</TextFieldLabel>
                 <TextFieldInput
                   type="number"
                   min="1"
@@ -302,7 +303,7 @@ export default function PetitionEditorPage() {
               </TextField>
 
               <TextField>
-                <TextFieldLabel>Starts at</TextFieldLabel>
+                <TextFieldLabel>{t('app.starts_at')}</TextFieldLabel>
                 <TextFieldInput
                   type="datetime-local"
                   value={form().startsAt}
@@ -311,7 +312,7 @@ export default function PetitionEditorPage() {
               </TextField>
 
               <TextField>
-                <TextFieldLabel>Ends at</TextFieldLabel>
+                <TextFieldLabel>{t('app.ends_at')}</TextFieldLabel>
                 <TextFieldInput
                   type="datetime-local"
                   value={form().endsAt}
@@ -326,21 +327,21 @@ export default function PetitionEditorPage() {
                   checked={form().requireVerification}
                   onChange={(checked) => update('requireVerification', checked)}
                 />
-                Require email verification
+                {t('app.require_email_verification')}
               </label>
               <label class="flex items-center gap-2 cursor-pointer text-sm">
                 <Checkbox
                   checked={form().allowPublicNames}
                   onChange={(checked) => update('allowPublicNames', checked)}
                 />
-                Allow public names
+                {t('app.allow_public_names')}
               </label>
               <label class="flex items-center gap-2 cursor-pointer text-sm">
                 <Checkbox
                   checked={form().allowComments}
                   onChange={(checked) => update('allowComments', checked)}
                 />
-                Allow comments
+                {t('app.allow_comments')}
               </label>
             </div>
           </CardContent>
@@ -348,10 +349,10 @@ export default function PetitionEditorPage() {
 
         <div class="flex gap-3 pb-8">
           <Button type="submit" disabled={saving()}>
-            {saving() ? 'Saving…' : isEdit ? 'Save changes' : 'Create petition'}
+            {saving() ? t('app.saving') : isEdit ? t('app.save_changes') : t('app.create_petition')}
           </Button>
           <Button type="button" variant="outline" onClick={() => navigate('/admin/petitions')}>
-            Cancel
+            {t('app.cancel')}
           </Button>
         </div>
       </form>

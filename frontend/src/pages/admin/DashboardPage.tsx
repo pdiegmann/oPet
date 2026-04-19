@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/table'
 import { StatCard } from '@/components/StatCard'
 import { StatusBadge, type PetitionStatus } from '@/components/StatusBadge'
+import { t } from '@/lib/i18n'
 
 type SigWithPetition = Signature & { petition?: { title: string; slug: string } }
 
@@ -18,7 +19,7 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1 class="text-2xl font-bold mb-6">Dashboard</h1>
+      <h1 class="text-2xl font-bold mb-6">{t('app.dashboard')}</h1>
 
       <Show when={data.loading}>
         <div class="grid grid-cols-4 gap-4 mb-8">
@@ -28,7 +29,7 @@ export default function DashboardPage() {
 
       <Show when={data.error}>
         <Alert variant="destructive">
-          <AlertDescription>Failed to load dashboard data.</AlertDescription>
+          <AlertDescription>{t('app.failed_to_load_dashboard_data')}</AlertDescription>
         </Alert>
       </Show>
 
@@ -36,26 +37,26 @@ export default function DashboardPage() {
         {(d) => (
           <>
             <div class="grid grid-cols-4 gap-4 mb-8">
-              <StatCard title="Total Petitions" value={d().stats.totalPetitions} />
-              <StatCard title="Active Petitions" value={d().stats.activePetitions} />
-              <StatCard title="Total Signatures" value={d().stats.totalSignatures} />
-              <StatCard title="Verified Signatures" value={d().stats.verifiedSignatures} />
+              <StatCard title={t('app.total_petitions')} value={d().stats.totalPetitions} />
+              <StatCard title={t('app.active_petitions')} value={d().stats.activePetitions} />
+              <StatCard title={t('app.total_signatures')} value={d().stats.totalSignatures} />
+              <StatCard title={t('app.verified_signatures')} value={d().stats.verifiedSignatures} />
             </div>
 
             <div class="grid grid-cols-2 gap-6">
               <div>
                 <div class="flex justify-between items-center mb-3">
-                  <h2 class="font-bold">Recent Petitions</h2>
+                  <h2 class="font-bold">{t('app.recent_petitions')}</h2>
                   <A href="/admin/petitions" class="text-sm text-primary hover:underline">
-                    View all →
+                    {t('app.view_all')} →
                   </A>
                 </div>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Signatures</TableHead>
+                      <TableHead>{t('app.title')}</TableHead>
+                      <TableHead>{t('app.status_2')}</TableHead>
+                      <TableHead>{t('app.signatures')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -84,13 +85,13 @@ export default function DashboardPage() {
               </div>
 
               <div>
-                <h2 class="font-bold mb-3">Recent Signatures</h2>
+                <h2 class="font-bold mb-3">{t('app.recent_signatures')}</h2>
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Petition</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>{t('app.name')}</TableHead>
+                      <TableHead>{t('app.petition')}</TableHead>
+                      <TableHead>{t('app.status_2')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -99,7 +100,7 @@ export default function DashboardPage() {
                         <TableRow>
                           <TableCell class="text-sm font-medium">{s.fullName}</TableCell>
                           <TableCell class="text-sm text-muted-foreground">
-                            {s.petition?.title ?? '—'}
+                            {s.petition?.title ?? t('app.text')}
                           </TableCell>
                           <TableCell>
                             <StatusBadge
