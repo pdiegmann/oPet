@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 
 const VERIFIED_OPTIONS = [
-  { value: '', label: 'All (verified & unverified)' },
+  { value: 'all', label: 'All (verified & unverified)' },
   { value: 'true', label: 'Verified only' },
   { value: 'false', label: 'Unverified only' },
 ]
@@ -21,7 +21,7 @@ const VERIFIED_OPTIONS = [
 const WITHDRAWN_OPTIONS = [
   { value: 'false', label: 'Active only' },
   { value: 'true', label: 'Withdrawn only' },
-  { value: '', label: 'All' },
+  { value: 'all', label: 'All' },
 ]
 
 type FilterOption = { value: string; label: string }
@@ -35,12 +35,13 @@ export default function SignaturesPage() {
   const [withdrawnFilter, setWithdrawnFilter] = createSignal<FilterOption>(WITHDRAWN_OPTIONS[0])
   const [removeTarget, setRemoveTarget] = createSignal<Signature | null>(null)
   const [error, setError] = createSignal<string | null>(null)
+  const [exporting, setExporting] = createSignal(false)
 
   const [data, { refetch }] = createResource(
     () => ({
       page: page(),
-      verified: verifiedFilter().value !== '' ? verifiedFilter().value === 'true' : undefined,
-      withdrawn: withdrawnFilter().value !== '' ? withdrawnFilter().value === 'true' : undefined,
+      verified: verifiedFilter().value !== 'all' ? verifiedFilter().value === 'true' : undefined,
+      withdrawn: withdrawnFilter().value !== 'all' ? withdrawnFilter().value === 'true' : undefined,
     }),
     (filters) => adminApi.getSignatures(token, params.id, filters),
   )
@@ -51,12 +52,29 @@ export default function SignaturesPage() {
     return 'pending'
   }
 
+  async function handleQuickExport() {
+    setError(null)
+    setExporting(true)
+    try {
+      await adminApi.exportSignatures(token, 'csv', {
+        petitionId: params.id,
+        verified: verifiedFilter().value !== 'all' ? verifiedFilter().value === 'true' : undefined,
+        withdrawn: withdrawnFilter().value !== 'all' ? withdrawnFilter().value === 'true' : undefined,
+        country: undefined,
+      })
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Export failed')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div>
       <h1 class="page-title">Signatures</h1>
 
       {/* Filters */}
-      <div class="flex gap-3 mb-5">
+      <div class="flex flex-wrap gap-3 mb-5 items-center">
         <Select<FilterOption>
           options={VERIFIED_OPTIONS}
           optionValue="value"
@@ -65,8 +83,8 @@ export default function SignaturesPage() {
           onChange={(opt) => { if (opt) { setVerifiedFilter(opt); setPage(1) } }}
           itemComponent={(p) => <SelectItem item={p.item}>{p.item.rawValue.label}</SelectItem>}
         >
-          <SelectTrigger>
-            <SelectValue<FilterOption>>{(s) => s.selectedOption().label}</SelectValue>
+          <SelectTrigger class="w-[250px]">
+            <SelectValue<FilterOption>>{(s) => s.selectedOption()?.label ?? 'All (verified & unverified)'}</SelectValue>
           </SelectTrigger>
           <SelectContent />
         </Select>
@@ -79,11 +97,19 @@ export default function SignaturesPage() {
           onChange={(opt) => { if (opt) { setWithdrawnFilter(opt); setPage(1) } }}
           itemComponent={(p) => <SelectItem item={p.item}>{p.item.rawValue.label}</SelectItem>}
         >
-          <SelectTrigger>
-            <SelectValue<FilterOption>>{(s) => s.selectedOption().label}</SelectValue>
+          <SelectTrigger class="w-[180px]">
+            <SelectValue<FilterOption>>{(s) => s.selectedOption()?.label ?? 'Active only'}</SelectValue>
           </SelectTrigger>
           <SelectContent />
         </Select>
+
+        <Button
+          variant="outline"
+          onClick={handleQuickExport}
+          disabled={exporting()}
+        >
+          {exporting() ? 'Exporting…' : 'Export CSV'}
+        </Button>
       </div>
 
       <Show when={data.loading}>
