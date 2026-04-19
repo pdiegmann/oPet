@@ -16,7 +16,7 @@ services:
       NODE_ENV: production
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=opet_network"
+      - "traefik.docker.network=opet_opet_network"
       - "com.centurylinklabs.watchtower.enable=false"
       - "traefik.http.routers.opet-backend.rule=Host(`opet.hnnl.eu`) && PathPrefix(`/api`)"
       - "traefik.http.routers.opet-backend.entrypoints=websecure"
@@ -34,7 +34,7 @@ services:
       - backend
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=opet_network"
+      - "traefik.docker.network=opet_opet_network"
       - "com.centurylinklabs.watchtower.enable=false"
       - "traefik.http.routers.opet-frontend.rule=Host(`opet.hnnl.eu`) && !PathPrefix(`/api`)"
       - "traefik.http.routers.opet-frontend.entrypoints=websecure"
